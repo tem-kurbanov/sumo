@@ -2365,7 +2365,7 @@ MSLane::executeMovements(const SUMOTime t) {
                                        && firstNotStopped->succEdge(1) != nullptr
                                        && firstNotStopped->getEdge()->allowedLanes(*firstNotStopped->succEdge(1), firstNotStopped->getVClass()) == nullptr);
 
-            const bool r1 = ttt > 0 && firstNotStopped->getWaitingTime() > ttt && !disconnected && !MSGlobals::gDisableJamTeleport
+            const bool r1 = ttt > 0 && firstNotStopped->getWaitingTime() > ttt && !disconnected
                             // never teleport a taxi on the last edge of it's route (where it would exit the simulation)
                             && (firstNotStopped->getDevice(typeid(MSDevice_Taxi)) == nullptr || firstNotStopped->getRoutePosition() < (firstNotStopped->getRoute().size() - 1));
             const bool r2 = !r1 && MSGlobals::gTimeToGridlockHighways > 0
@@ -2380,6 +2380,17 @@ MSLane::executeMovements(const SUMOTime t) {
             if (r1 || r2 || r3 || r4 || r5) {
                 const std::vector<MSLink*>::const_iterator link = succLinkSec(*firstNotStopped, 1, *this, firstNotStopped->getBestLanesContinuation());
                 const bool minorLink = !wrongLane && (link != myLinks.end()) && !((*link)->havePriority());
+                
+                // Block teleportations that would be classified as "jam" in the old logic
+                // Old classification: wrongLane ? "wrong lane" : (minorLink ? "yield" : "jam")
+                // So we block when: !wrongLane && !minorLink (would be classified as "jam")
+                const bool wouldBeClassifiedAsJam = !wrongLane && !minorLink;
+                
+                // Skip jam teleportations if disabled, but allow yield and wrong lane teleportations
+                if (wouldBeClassifiedAsJam && MSGlobals::gDisableJamTeleport) {
+                    return;
+                }
+                
                 std::string reason = (wrongLane ? " (wrong lane" : (minorLink ? " (yield" : " (jam"));
                 myBruttoVehicleLengthSumToRemove += firstNotStopped->getVehicleType().getLengthWithGap();
                 myNettoVehicleLengthSumToRemove += firstNotStopped->getVehicleType().getLength();

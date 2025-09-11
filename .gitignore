@@ -17,6 +17,7 @@
 /.pydevproject
 /.vs
 /.vim
+/.cache
 # build dir
 /clang*
 /build
