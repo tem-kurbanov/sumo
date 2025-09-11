@@ -71,6 +71,9 @@ public:
     /** The time to wait for teleport when rail signals cause deadlock */
     static SUMOTime gTimeToTeleportRSDeadlock;
 
+    /** Whether to disable teleportation due to traffic jams */
+    static bool gDisableJamTeleport;
+
     /** Whether gridlocked vehicles shall be removed instead of teleporting */
     static bool gRemoveGridlocked;
 

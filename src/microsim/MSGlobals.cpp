@@ -38,6 +38,7 @@ double MSGlobals::gGridlockHighwaysSpeed;
 SUMOTime MSGlobals::gTimeToTeleportDisconnected;
 SUMOTime MSGlobals::gTimeToTeleportBidi;
 SUMOTime MSGlobals::gTimeToTeleportRSDeadlock;
+bool MSGlobals::gDisableJamTeleport;
 bool MSGlobals::gRemoveGridlocked;
 
 SUMOTime MSGlobals::gTimeToImpatience;

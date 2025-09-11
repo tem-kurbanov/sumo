@@ -454,6 +454,9 @@ MSFrame::fillOptions() {
     oc.doRegister("time-to-teleport.railsignal-deadlock", new Option_String("-1", "TIME"));
     oc.addDescription("time-to-teleport.railsignal-deadlock", "Processing", TL("The waiting time after which vehicles in a rail-signal based deadlock are teleported"));
 
+    oc.doRegister("time-to-teleport.disable-jam", new Option_Bool(false));
+    oc.addDescription("time-to-teleport.disable-jam", "Processing", TL("Disable teleportation due to traffic jams while keeping other teleportation reasons active"));
+
     oc.doRegister("waiting-time-memory", new Option_String("100", "TIME"));
     oc.addDescription("waiting-time-memory", "Processing", TL("Length of time interval, over which accumulated waiting time is taken into account (default is 100s.)"));
 
@@ -1137,6 +1140,7 @@ MSFrame::setMSGlobals(OptionsCont& oc) {
     MSGlobals::gTimeToTeleportDisconnected = string2time(oc.getString("time-to-teleport.disconnected"));
     MSGlobals::gTimeToTeleportBidi = string2time(oc.getString("time-to-teleport.bidi"));
     MSGlobals::gTimeToTeleportRSDeadlock = string2time(oc.getString("time-to-teleport.railsignal-deadlock"));
+    MSGlobals::gDisableJamTeleport = oc.getBool("time-to-teleport.disable-jam");
     MSGlobals::gRemoveGridlocked = oc.getBool("time-to-teleport.remove");
     MSGlobals::gCheck4Accidents = !oc.getBool("ignore-accidents");
     MSGlobals::gCheckRoutes = !oc.getBool("ignore-route-errors");

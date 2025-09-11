@@ -2365,7 +2365,7 @@ MSLane::executeMovements(const SUMOTime t) {
                                        && firstNotStopped->succEdge(1) != nullptr
                                        && firstNotStopped->getEdge()->allowedLanes(*firstNotStopped->succEdge(1), firstNotStopped->getVClass()) == nullptr);
 
-            const bool r1 = ttt > 0 && firstNotStopped->getWaitingTime() > ttt && !disconnected
+            const bool r1 = ttt > 0 && firstNotStopped->getWaitingTime() > ttt && !disconnected && !MSGlobals::gDisableJamTeleport
                             // never teleport a taxi on the last edge of it's route (where it would exit the simulation)
                             && (firstNotStopped->getDevice(typeid(MSDevice_Taxi)) == nullptr || firstNotStopped->getRoutePosition() < (firstNotStopped->getRoute().size() - 1));
             const bool r2 = !r1 && MSGlobals::gTimeToGridlockHighways > 0
