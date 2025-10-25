@@ -18,9 +18,9 @@
 // A class for visualizing chargingStation geometry (adapted from GUILaneWrapper)
 /****************************************************************************/
 
+#include <netedit/changes/GNEChange_Attribute.h>
 #include <netedit/GNENet.h>
 #include <netedit/GNETagProperties.h>
-#include <netedit/changes/GNEChange_Attribute.h>
 #include <utils/gui/div/GLHelper.h>
 #include <utils/options/OptionsCont.h>
 
@@ -35,10 +35,12 @@ GNEChargingStation::GNEChargingStation(GNENet* net) :
 }
 
 
-GNEChargingStation::GNEChargingStation(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane, const double startPos, const double endPos,
-                                       const std::string& name, double chargingPower, double efficiency, bool chargeInTransit, SUMOTime chargeDelay,
-                                       const std::string& chargeType, const SUMOTime waitingTime,  const std::string& parkingAreaID, bool friendlyPosition, const Parameterised::Map& parameters) :
-    GNEStoppingPlace(id, net, filename, SUMO_TAG_CHARGING_STATION, lane, startPos, endPos, name, friendlyPosition, RGBColor::INVISIBLE, parameters),
+GNEChargingStation::GNEChargingStation(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane,
+                                       const double startPos, const double endPos, const std::string& name, const double chargingPower,
+                                       const double efficiency, const bool chargeInTransit, const SUMOTime chargeDelay,
+                                       const std::string& chargeType, const SUMOTime waitingTime, const std::string& parkingAreaID,
+                                       const bool friendlyPosition, const Parameterised::Map& parameters) :
+    GNEStoppingPlace(id, net, filename, SUMO_TAG_CHARGING_STATION, lane, startPos, endPos, name, friendlyPosition, RGBColor::INVISIBLE, 0, parameters),
     myChargingPower(chargingPower),
     myEfficiency(efficiency),
     myChargeInTransit(chargeInTransit),
@@ -113,7 +115,7 @@ GNEChargingStation::drawGL(const GUIVisualizationSettings& s) const {
         // Obtain exaggeration of the draw
         const double chargingStationExaggeration = getExaggeration(s);
         // check if draw moving geometry points
-        const bool movingGeometryPoints = drawMovingGeometryPoints(false);
+        const bool movingGeometryPoints = drawMovingGeometryPoints();
         // get detail level
         const auto d = s.getDetailLevel(chargingStationExaggeration);
         // draw geometry only if we'rent in drawForObjectUnderCursor mode
@@ -146,10 +148,10 @@ GNEChargingStation::drawGL(const GUIVisualizationSettings& s) const {
             // draw sign
             drawSign(s, d, chargingStationExaggeration, baseColor, signColor, "C");
             // draw geometry points
-            if (movingGeometryPoints && (myStartPosition != INVALID_DOUBLE)) {
+            if (movingGeometryPoints && (myStartPosOverLane != INVALID_DOUBLE)) {
                 drawLeftGeometryPoint(s, d, myAdditionalGeometry.getShape().front(), myAdditionalGeometry.getShapeRotations().front(), baseColor);
             }
-            if (movingGeometryPoints && (myEndPosition != INVALID_DOUBLE)) {
+            if (movingGeometryPoints && (myEndPosPosOverLane != INVALID_DOUBLE)) {
                 drawRightGeometryPoint(s, d, myAdditionalGeometry.getShape().back(), myAdditionalGeometry.getShapeRotations().back(), baseColor);
             }
             // pop layer matrix
@@ -195,7 +197,7 @@ GNEChargingStation::getAttribute(SumoXMLAttr key) const {
         case SUMO_ATTR_PARKING_AREA:
             return myParkingAreaID;
         default:
-            return getStoppingPlaceAttribute(this, key);
+            return getStoppingPlaceAttribute(key);
     }
 }
 
@@ -289,10 +291,9 @@ GNEChargingStation::setAttribute(SumoXMLAttr key, const std::string& value) {
             myParkingAreaID = value;
             break;
         default:
-            setStoppingPlaceAttribute(this, key, value);
+            setStoppingPlaceAttribute(key, value);
             break;
     }
 }
-
 
 /****************************************************************************/

@@ -20,7 +20,15 @@
 #pragma once
 #include <config.h>
 
+#include <netedit/elements/moving/GNEMoveElementLaneDouble.h>
+
 #include "GNEDetector.h"
+
+// ===========================================================================
+// class declaration
+// ===========================================================================
+
+class GNEMoveElementLaneDouble;
 
 // ===========================================================================
 // class definitions
@@ -56,7 +64,7 @@ public:
     GNELaneAreaDetector(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane, const double pos, const double length,
                         const SUMOTime freq, const std::string& trafficLight, const std::string& outputFilename, const std::vector<std::string>& vehicleTypes,
                         const std::vector<std::string>& nextEdges, const std::string& detectPersons, const std::string& name,
-                        const SUMOTime timeThreshold, double speedThreshold, const double jamThreshold, const bool friendlyPos,
+                        const SUMOTime timeThreshold, const double speedThreshold, const double jamThreshold, const bool friendlyPos,
                         const bool show, const Parameterised::Map& parameters);
 
     /**@brief Constructor for Multi-Lane detectors
@@ -80,14 +88,25 @@ public:
      * @param[in] show detector in sumo-gui
      * @param[in] parameters generic parameters
      */
-    GNELaneAreaDetector(const std::string& id, GNENet* net, const std::string& filename, std::vector<GNELane*> lanes, double pos, double endPos,
+    GNELaneAreaDetector(const std::string& id, GNENet* net, const std::string& filename, std::vector<GNELane*> lanes, const double pos, const double endPos,
                         const SUMOTime freq, const std::string& trafficLight, const std::string& outputFilename, const std::vector<std::string>& vehicleTypes,
                         const std::vector<std::string>& nextEdges, const std::string& detectPersons, const std::string& name,
-                        const SUMOTime timeThreshold, double speedThreshold, const double jamThreshold, const bool friendlyPos,
+                        const SUMOTime timeThreshold, const double speedThreshold, const double jamThreshold, const bool friendlyPos,
                         const bool show, const Parameterised::Map& parameters);
 
     /// @brief Destructor
     ~GNELaneAreaDetector();
+
+    /// @brief methods to retrieve the elements linked to this GNEAdditional
+    /// @{
+
+    /// @brief get GNEMoveElement associated with this GNEAdditional
+    GNEMoveElement* getMoveElement() const override;
+
+    /// @brief get parameters associated with this GNEAdditional
+    Parameterised* getParameters() override;
+
+    /// @}
 
     /// @name members and functions relative to write additionals into XML
     /// @{
@@ -109,7 +128,7 @@ public:
     /// @}
 
     /// @brief update pre-computed geometry information
-    void updateGeometry();
+    void updateGeometry() override;
 
     /// @name inherited from GUIGlObject
     /// @{
@@ -151,33 +170,51 @@ public:
      * @param[in] key The attribute key
      * @return string with the value associated to key
      */
-    std::string getAttribute(SumoXMLAttr key) const;
+    std::string getAttribute(SumoXMLAttr key) const override;
 
-    /* @brief method for getting the Attribute of an XML key in double format (to avoid unnecessary parse<double>(...) for certain attributes)
+    /* @brief method for getting the Attribute of an XML key in double format
      * @param[in] key The attribute key
      * @return double with the value associated to key
      */
-    double getAttributeDouble(SumoXMLAttr key) const;
+    double getAttributeDouble(SumoXMLAttr key) const override;
+
+    /* @brief method for getting the Attribute of an XML key in position format
+     * @param[in] key The attribute key
+     * @return position with the value associated to key
+     */
+    Position getAttributePosition(SumoXMLAttr key) const override;
+
+    /* @brief method for getting the Attribute of an XML key in positionVector format
+     * @param[in] key The attribute key
+     * @return positionVector with the value associated to key
+     */
+    PositionVector getAttributePositionVector(SumoXMLAttr key) const override;
 
     /* @brief method for setting the attribute and letting the object perform additional changes
      * @param[in] key The attribute key
      * @param[in] value The new value
      * @param[in] undoList The undoList on which to register changes
      */
-    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList);
+    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList) override;
 
     /* @brief method for checking if the key and their correspond attribute are valids
      * @param[in] key The attribute key
      * @param[in] value The value associated to key key
      * @return true if the value is valid, false in other case
      */
-    bool isValid(SumoXMLAttr key, const std::string& value);
+    bool isValid(SumoXMLAttr key, const std::string& value) override;
 
     /// @}
 
 protected:
-    /// @brief end position over lane (only for Multilane E2 detectors)
-    double myEndPositionOverLane = 0;
+    /// @brief The start position over lane
+    double myStartPosOverLane = 0;
+
+    /// @brief The end position over lane
+    double myEndPosPosOverLane = 0;
+
+    /// @brief Flag for friendly position
+    bool myFriendlyPosition = false;
 
     /// @brief The time-based threshold that describes how much time has to pass until a vehicle is recognized as halting
     SUMOTime myTimeThreshold = 0;
@@ -194,10 +231,13 @@ protected:
     /// @brief show or hidde detector in sumo-gui
     bool myShow = true;
 
+    /// @brief move element lane double
+    GNEMoveElementLaneDouble* myMoveElementLaneDouble = nullptr;
+
 private:
     /// @brief draw E2 detector
     void drawE2(const GUIVisualizationSettings& s, const GUIVisualizationSettings::Detail d,
-                const double exaggeration) const;
+                const double exaggeration, const bool drawGeometryPoints) const;
 
     /// @brief draw E2 partial lane
     void drawE2PartialLane(const GUIVisualizationSettings& s, const GUIVisualizationSettings::Detail d,
@@ -210,19 +250,7 @@ private:
                                const double exaggeration) const;
 
     /// @brief set attribute after validation
-    void setAttribute(SumoXMLAttr key, const std::string& value);
-
-    /// @brief set move shape
-    void setMoveShape(const GNEMoveResult& moveResult);
-
-    /// @brief commit move shape
-    void commitMoveShape(const GNEMoveResult& moveResult, GNEUndoList* undoList);
-
-    /// @brief get start position over lane that is applicable to the shape
-    double getStartGeometryPositionOverLane() const;
-
-    /// @brief get end position over lane that is applicable to the shape
-    double getEndGeometryPositionOverLane() const;
+    void setAttribute(SumoXMLAttr key, const std::string& value) override;
 
     /// @brief Invalidated copy constructor.
     GNELaneAreaDetector(const GNELaneAreaDetector&) = delete;

@@ -119,7 +119,7 @@ if (GNU_COMPILER OR CLANG_COMPILER)
     endif ()
     if (GNU_COMPILER)
         # see https://stackoverflow.com/questions/23499909/adjust-variable-tracking-assignment-length
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --param=max-vartrack-size=200000")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --param=max-vartrack-size=1500000")
     endif ()
     if (PROFILING)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
@@ -289,7 +289,7 @@ if (GNU_COMPILER AND WIN32)
 endif ()
 
 if (NOT JUPEDSIM_CUSTOMDIR)
-#     check if set JuPedSim directory from SUMOLibraries
+    # check if set JuPedSim directory from SUMOLibraries
     if (SUMO_LIBRARIES AND WIN32)
         file(GLOB JUPEDSIM_CUSTOMDIR_SUMOLIBRARIES "${SUMO_LIBRARIES}/JuPedSim-*")
         set(JUPEDSIM_CUSTOMDIR "${JUPEDSIM_CUSTOMDIR_SUMOLIBRARIES}")
@@ -315,10 +315,11 @@ if (SUMO_LIBRARIES AND WIN32)
     file(GLOB EIGEN3_PATH "${SUMO_LIBRARIES}/eigen-3.?.?")
     file(GLOB GETTEXT_PATH "${SUMO_LIBRARIES}/gettext-?.??")
     file(GLOB ARROW_PATH "${SUMO_LIBRARIES}/apache-arrow-??.?.?")
-    file(GLOB LZ4_PATH "${SUMO_LIBRARIES}/3rdPartyLibs/lz4-?.??.?")	      # needed for Arrow
+    file(GLOB LZ4_PATH "${SUMO_LIBRARIES}/3rdPartyLibs/lz4-?.??.?")       # needed for Arrow
     file(GLOB ZSTD_PATH "${SUMO_LIBRARIES}/3rdPartyLibs/zstd-?.?.?")      # needed for Arrow
     file(GLOB BZIP2_PATH "${SUMO_LIBRARIES}/3rdPartyLibs/bzip2-?.?.?")    # needed for Arrow
     file(GLOB THRIFT_PATH "${SUMO_LIBRARIES}/3rdPartyLibs/thrift-?.??.?") # needed for Arrow
+
     # set all paths in prefix
     set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${EIGEN3_PATH};${XERCES_PATH};${ZLIB_PATH};${PROJ_PATH};${FOX_PATH};${FREETYPE_PATH};${GETTEXT_PATH};${GETTEXT_PATH}/tools/gettext;${ARROW_PATH};${LZ4_PATH};${ZSTD_PATH};${BZIP2_PATH};${THRIFT_PATH}")
     # save in variable SUMO_LIBRARIES_DLL all paths to dll files
@@ -517,7 +518,8 @@ if (CHECK_OPTIONAL_LIBS)
     file(GLOB OSG_PATH "${SUMO_LIBRARIES}/OSG-?.?.?")
     file(GLOB GL2PS_PATH "${SUMO_LIBRARIES}/gl2ps-?.?.?")
     file(GLOB GEOS_PATH "${SUMO_LIBRARIES}/geos-?.??.?")
-    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${GDAL_PATH};${FFMPEG_PATH};${OSG_PATH};${GL2PS_PATH};${GEOS_PATH}")
+    file(GLOB BOOST_PATH "${SUMO_LIBRARIES}/boost-?.??.?")
+    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${GDAL_PATH};${FFMPEG_PATH};${OSG_PATH};${GL2PS_PATH};${GEOS_PATH};${BOOST_PATH}")
     file(GLOB SUMO_OPTIONAL_LIBRARIES_DLL "${GDAL_PATH}/bin/*.dll" "${FFMPEG_PATH}/bin/*.dll" "${OSG_PATH}/bin/*.dll" "${GL2PS_PATH}/bin/*.dll" "${JUPEDSIM_CUSTOMDIR}/bin/*.dll")
 
     # GDAL (for geopositioning)
@@ -573,6 +575,28 @@ if (CHECK_OPTIONAL_LIBS)
 
     # add optional libraries
     list(APPEND SUMO_LIBRARIES_DLL ${SUMO_OPTIONAL_LIBRARIES_DLL})
+
+    # BOOST (needed for stacktrace, minimum version 1.80.0)
+    find_package(boost_filesystem CONFIG QUIET)
+    find_package(boost_process CONFIG QUIET)
+    find_package(boost_headers CONFIG QUIET)
+
+    # init boost library
+    set(BOOST_LIBRARIES "")
+
+    # continue if boost was found
+    if(boost_filesystem_FOUND AND boost_process_FOUND AND boost_headers_FOUND)
+        message(STATUS "Boost headers, filesystem and process " ${boost_headers_VERSION} " found, enabling stacktrace support")
+        set(HAVE_BOOST 1)
+        # set includes
+        get_target_property(Boost_include Boost::headers INTERFACE_INCLUDE_DIRECTORIES)
+        include_directories(${Boost_include})
+        # add boost libraries
+        list(APPEND BOOST_LIBRARIES Boost::filesystem Boost::process Boost::headers)
+    else()
+        message(STATUS "Boost not found, building without stacktrace support")
+    endif()
+
 endif (CHECK_OPTIONAL_LIBS)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src)
@@ -581,7 +605,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(commonlibs
         utils_distribution utils_handlers utils_shapes utils_options
         utils_xml utils_geom utils_common utils_importio utils_iodevices utils_traction_wire foreign_tcpip
-        ${XercesC_LIBRARIES} ${ZLIB_LIBRARIES} ${PROJ_LIBRARY} ${Intl_LIBRARIES} ${FMT_LIBRARY} ${PARQUET_LIBRARY})
+        ${XercesC_LIBRARIES} ${ZLIB_LIBRARIES} ${PROJ_LIBRARY} ${Intl_LIBRARIES} ${FMT_LIBRARY} ${PARQUET_LIBRARY} ${CMAKE_DL_LIBS})
 if (WIN32)
     set(commonlibs ${commonlibs} ws2_32)
 endif ()

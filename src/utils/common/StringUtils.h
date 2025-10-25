@@ -62,6 +62,9 @@ public:
     /// @brief Replaces an environment variable with its value (similar to bash); syntax for a variable is ${NAME}
     static std::string substituteEnvironment(const std::string& str, const std::chrono::time_point<std::chrono::system_clock>* const timeRef = nullptr);
 
+    /// @brief Returns an ISO8601 formatted time string with microsecond precision
+    static std::string isoTimeString(const std::chrono::time_point<std::chrono::system_clock>* const timeRef = nullptr);
+
     ///@brief  Checks whether a given string starts with the prefix
     static bool startsWith(const std::string& str, const std::string prefix);
 
@@ -195,6 +198,9 @@ public:
 
     /// @brief remove leading and trailing whitespace
     static std::string wrapText(const std::string s, int width);
+
+    /// @brief write with maximum precision if needed but remove trailing zeros
+    static std::string adjustDecimalValue(double value, int precision); 
 
     /// @brief must be called when shutting down the xml subsystem
     static void resetTranscoder();

@@ -61,7 +61,7 @@
 void
 fillOptions() {
     OptionsCont& oc = OptionsCont::getOptions();
-    oc.addCallExample("-c <CONFIGURATION>", "run with configuration options set in file");
+    oc.addCallExample("-c <CONFIGURATION>", TL("run with configuration options set in file"));
 
     // insert options sub-topics
     SystemFrame::addConfigurationOptions(oc); // fill this subtopic, too
@@ -240,7 +240,7 @@ int
 main(int argc, char** argv) {
     OptionsCont& oc = OptionsCont::getOptions();
     oc.setApplicationDescription(TL("Importer of polygons and POIs for the microscopic, multi-modal traffic simulation SUMO."));
-    oc.setApplicationName("polyconvert", "Eclipse SUMO polyconvert Version " VERSION_STRING);
+    oc.setApplicationName("polyconvert", "Eclipse SUMO polyconvert " VERSION_STRING);
     int ret = 0;
     try {
         // initialise subsystems

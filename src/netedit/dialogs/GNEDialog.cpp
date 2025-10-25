@@ -40,6 +40,8 @@ FXDEFMAP(GNEDialog) MFXDialogBoxMap[] = {
     FXMAPFUNC(SEL_COMMAND,  MID_GNE_BUTTON_RUN,         GNEDialog::onCmdRun),
     FXMAPFUNC(SEL_COMMAND,  MID_GNE_BUTTON_BACK,        GNEDialog::onCmdBack),
     FXMAPFUNC(SEL_COMMAND,  MID_GNE_BUTTON_ADVANCED,    GNEDialog::onCmdAdvanced),
+    FXMAPFUNC(SEL_COMMAND,  MID_GNE_BUTTON_COPY,        GNEDialog::onCmdCopy),
+    FXMAPFUNC(SEL_COMMAND,  MID_GNE_BUTTON_REPORT,      GNEDialog::onCmdReport),
     // abort dialog
     FXMAPFUNC(SEL_CLOSE,    0,              GNEDialog::onCmdAbort),
     FXMAPFUNC(SEL_COMMAND,  MID_HOTKEY_ESC, GNEDialog::onCmdAbort),
@@ -64,8 +66,10 @@ GNEDialog::GNEDialog(GNEApplicationWindow* applicationWindow, const std::string&
     myApplicationWindow(applicationWindow),
     myType(type),
     myOpenType(openType) {
-    // build dialog
-    buildDialog(titleIcon, buttons);
+    // build dialog only if applicationWindow was created
+    if (applicationWindow->id()) {
+        buildDialog(titleIcon, buttons);
+    }
 }
 
 
@@ -78,10 +82,13 @@ GNEDialog::GNEDialog(GNEApplicationWindow* applicationWindow, const std::string&
     myApplicationWindow(applicationWindow),
     myType(type),
     myOpenType(openType) {
-    // build dialog
-    buildDialog(titleIcon, buttons);
-    // set explicit size
-    resize(width, height);
+    // build dialog only if applicationWindow was created
+    if (applicationWindow->id()) {
+        // build dialog
+        buildDialog(titleIcon, buttons);
+        // set explicit size
+        resize(width, height);
+    }
 }
 
 
@@ -146,6 +153,18 @@ GNEDialog::onCmdAdvanced(FXObject*, FXSelector, void*) {
 
 
 long
+GNEDialog::onCmdCopy(FXObject*, FXSelector, void*) {
+    throw ProcessError("onCmdyCopy function must be reimplemented in GNEDialog children");
+}
+
+
+long
+GNEDialog::onCmdReport(FXObject*, FXSelector, void*) {
+    throw ProcessError("onCmdyReport function must be reimplemented in GNEDialog children");
+}
+
+
+long
 GNEDialog::onKeyPress(FXObject* obj, FXSelector sel, void* ptr) {
     if (myTesting && (obj != myApplicationWindow->getInternalTest())) {
         return 1;
@@ -190,32 +209,28 @@ GNEDialog::openDialog(FXWindow* focusableElement) {
         bool closeDialog = false;
         // execute every dialog step
         while (internalTest->getCurrentStep() && !closeDialog &&
-                (internalTest->getCurrentStep()->getCategory() == InternalTestStep::Category::DIALOG)) {
-            // get current step and set next step
+                (internalTest->getCurrentStep()->getCategory() == InternalTestStep::Category::DIALOG) &&
+                (internalTest->getCurrentStep()->getDialogArgument()->getType() == myType)) {
+            // set next step
             const auto testStep = internalTest->setNextStep();
             // continue depending on the dialog argument action
-            switch (testStep->getDialogArgument()->getBasicAction()) {
-                case InternalTestStep::DialogArgument::BasicAction::ACCEPT:
+            switch (testStep->getDialogArgument()->getAction()) {
+                case InternalTestStep::DialogArgument::Action::ACCEPT:
                     onCmdAccept(internalTest, 0, nullptr);
                     closeDialog = true;
                     break;
-                case InternalTestStep::DialogArgument::BasicAction::CANCEL:
+                case InternalTestStep::DialogArgument::Action::CANCEL:
                     onCmdCancel(internalTest, 0, nullptr);
                     closeDialog = true;
                     break;
-                case InternalTestStep::DialogArgument::BasicAction::RESET:
+                case InternalTestStep::DialogArgument::Action::RESET:
                     onCmdReset(internalTest, 0, nullptr);
                     break;
-                case InternalTestStep::DialogArgument::BasicAction::ABORT:
+                case InternalTestStep::DialogArgument::Action::ABORT:
                     onCmdAbort(nullptr, 0, nullptr);
-                    closeDialog = true;
                     break;
                 default:
-                    if (testStep->getDialogArgument()->getCustomAction().size() > 0) {
-                        runInternalTest(testStep->getDialogArgument());
-                    } else {
-                        handle(internalTest, testStep->getSelector(), testStep->getEvent());
-                    }
+                    runInternalTest(testStep->getDialogArgument());
                     break;
             }
         }
@@ -448,6 +463,23 @@ GNEDialog::buildDialog(GUIIcon titleIcon, GNEDialog::Buttons buttons) {
             myAcceptButton = GUIDesigns::buildFXButton(buttonsFrame, TL("Close"), "", TL("Close"),
                              GUIIconSubSys::getIcon(GUIIcon::YES), this,
                              MID_GNE_BUTTON_ACCEPT, GUIDesignButtonDialog);
+            // set focus button
+            myFocusButton = myAcceptButton;
+            break;
+        }
+        case Buttons::OK_COPY_REPORT: {
+            // run/abort button
+            myAcceptButton = GUIDesigns::buildFXButton(buttonsFrame, TL("OK"), "", TL("OK"),
+                             GUIIconSubSys::getIcon(GUIIcon::YES), this,
+                             MID_GNE_BUTTON_ACCEPT, GUIDesignButtonDialog);
+            // copy button
+            myCopyButton = GUIDesigns::buildFXButton(buttonsFrame, TL("Copy"), "", TL("Copy error trace to clipboard"),
+                           GUIIconSubSys::getIcon(GUIIcon::COPY), this,
+                           MID_GNE_BUTTON_COPY, GUIDesignButtonDialog);
+            // cancel button
+            myReportButton = GUIDesigns::buildFXButton(buttonsFrame, TL("Report"), "", TL("Report bug to github"),
+                             GUIIconSubSys::getIcon(GUIIcon::GITHUB), this,
+                             MID_GNE_BUTTON_REPORT, GUIDesignButtonDialog);
             // set focus button
             myFocusButton = myAcceptButton;
             break;

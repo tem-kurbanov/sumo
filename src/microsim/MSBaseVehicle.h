@@ -436,6 +436,9 @@ public:
     /// @brief return index of edge within route
     int getRoutePosition() const;
 
+    /// @brief return the number of edges remaining in the route (include the current)
+    int getNumRemainingEdges() const;
+
     int getArrivalIndex() const {
         return myParameter->arrivalEdge;
     }
@@ -503,6 +506,9 @@ public:
     /// @brief removes a person or container
     void removeTransportable(MSTransportable* t);
 
+    /// @brief removes a person or containers mass
+    void removeTransportableMass(MSTransportable* t);
+
     /// @brief retrieve riding persons
     const std::vector<MSTransportable*>& getPersons() const;
 
@@ -521,6 +527,8 @@ public:
      * @return Whether the vehicle's current route is valid
      */
     bool hasValidRoute(std::string& msg, ConstMSRoutePtr route = 0) const;
+
+    bool hasValidRoute(std::string& msg, MSRouteIterator start, MSRouteIterator last, bool checkJumps) const;
 
     /// @brief checks wether the vehicle can depart on the first edge
     virtual bool hasValidRouteStart(std::string& msg);

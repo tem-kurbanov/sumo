@@ -58,7 +58,7 @@ traci.vehicle.dispatchTaxi(taxi, [reservations[0].id])
 
 controlIdle = False
 while traci.simulation.getMinExpectedNumber() > 0:
-    stops = [(s.lane, s.actType) for s in  traci.vehicle.getStops(taxi)]
+    stops = [(s.lane, s.actType) for s in traci.vehicle.getStops(taxi)]
     print("%s state=%s edge=%s stops=%s" % (
         traci.simulation.getTime(),
         traci.vehicle.getParameter(taxi, "device.taxi.state"),
@@ -69,6 +69,6 @@ while traci.simulation.getMinExpectedNumber() > 0:
         controlIdle = True
         traci.vehicle.changeTarget(taxi, "D2D1")
         traci.vehicle.resume(taxi)
-        traci.vehicle.setStop(taxi, "D2D1", pos="50", duration=-1, flags=traci.constants.STOP_TRIGGERED)
+        traci.vehicle.setStop(taxi, "D2D1", pos=50, duration=-1, flags=traci.constants.STOP_TRIGGERED)
 
 traci.close()

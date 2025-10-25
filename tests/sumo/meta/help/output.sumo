@@ -1,4 +1,4 @@
-Eclipse SUMO sumo Version v1_23_1+1171-abf54b0e8c3
+Eclipse SUMO sumo v1_24_0+1295-8333438020a
  Copyright (C) 2001-2025 German Aerospace Center (DLR) and others; https://sumo.dlr.de
 A microscopic, multi-modal traffic simulation.
 
@@ -34,6 +34,8 @@ Input Options:
 Output Options:
   --write-license                      Include license info into every output
                                         file
+  --write-metadata                     Write parsable metadata (configuration
+                                        etc.) instead of comments
   --output-prefix STR                  Prefix which is applied to all output
                                         files. The special string 'TIME' is
                                         replaced by the current time.
@@ -106,6 +108,8 @@ Output Options:
                                         in the FCD output
   --fcd-output.filter-shapes STR[]     List shape names that should be used to
                                         filter the FCD output
+  --person-fcd-output FILE             Save fcd for persons and container to
+                                        separate FILE
   --device.ssm.filter-edges.input-file FILE  Restrict SSM device output to the
                                         edge selection from the given input file
   --full-output FILE                   Save a lot of information for each
@@ -485,9 +489,11 @@ Routing Options:
                                         'parkingAreas', 'ptStops',
                                         'allJunctions' and combinations)
   --persontrip.transfer.taxi-walk STR[]  Where taxis can drop off customers
-                                        ('allJunctions, 'ptStops')
+                                        ('allJunctions, 'ptStops',
+                                        'parkingAreas')
   --persontrip.transfer.walk-taxi STR[]  Where taxis can pick up customers
-                                        ('allJunctions, 'ptStops')
+                                        ('allJunctions, 'ptStops',
+                                        'parkingAreas')
   --persontrip.default.group STR       When set, trips between the same origin
                                         and destination will share a taxi by
                                         default
@@ -514,6 +520,12 @@ Routing Options:
                                         average weight of prior edge weights
   --device.rerouting.adaptation-interval TIME  The interval for updating the
                                         edge weights
+  --device.rerouting.threshold.factor FLOAT  Only reroute if the new route is
+                                        faster than the current route by the
+                                        given factor
+  --device.rerouting.threshold.constant TIME  Only reroute if the new route is
+                                        faster than the current route by the
+                                        given TIME
   --device.rerouting.with-taz          Use zones (districts) as routing start-
                                         and endpoints
   --device.rerouting.mode STR          Set routing flags (8 ignores temporary
@@ -888,6 +900,8 @@ Taxi Device Options:
                                         KEY1:VALUE1[,KEY2:VALUE]
   --device.taxi.dispatch-period TIME   The period between successive calls to
                                         the dispatcher
+  --device.taxi.dispatch-keep-unreachable TIME  The time before aborting
+                                        unreachable reservations
   --device.taxi.idle-algorithm STR     The behavior of idle taxis
                                         [stop|randomCircling|taxistand]
   --device.taxi.idle-algorithm.output FILE  Write information from the idling

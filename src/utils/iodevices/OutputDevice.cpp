@@ -123,6 +123,7 @@ OutputDevice::getDevice(const std::string& name, bool usePrefix) {
 #endif
     dev->setPrecision();
     dev->getOStream() << std::setiosflags(std::ios::fixed);
+    dev->myWriteMetadata = oc.exists("write-metadata") && oc.getBool("write-metadata");
     myOutputDevices[name] = dev;
     return *dev;
 }
@@ -251,7 +252,7 @@ OutputDevice::writeXMLHeader(const std::string& rootElement,
         attrs[SUMO_ATTR_XMLNS] = "http://www.w3.org/2001/XMLSchema-instance";
         attrs[SUMO_ATTR_SCHEMA_LOCATION] = "http://sumo.dlr.de/xsd/" + schemaFile;
     }
-    return myFormatter->writeXMLHeader(getOStream(), rootElement, attrs, includeConfig);
+    return myFormatter->writeXMLHeader(getOStream(), rootElement, attrs, myWriteMetadata, includeConfig);
 }
 
 
@@ -304,7 +305,12 @@ OutputDevice::parseWrittenAttributes(const std::vector<std::string>& attrList, c
             result |= special.find(attrName)->second;
         } else {
             if (SUMOXMLDefinitions::Attrs.hasString(attrName)) {
-                result.set(SUMOXMLDefinitions::Attrs.get(attrName));
+                int attrNr = SUMOXMLDefinitions::Attrs.get(attrName);
+                if (attrNr < (int)result.size()) {
+                    result.set(attrNr);
+                } else {
+                    WRITE_ERRORF(TL("Attribute '%' is not support for filtering written attributes in %."), attrName, desc);
+                }
             } else {
                 WRITE_ERRORF(TL("Unknown attribute '%' to write in %."), attrName, desc);
             }

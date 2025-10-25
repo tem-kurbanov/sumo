@@ -23,38 +23,37 @@
 
 #include <netbuild/NBEdge.h>
 #include <netedit/elements/GNECandidateElement.h>
-#include <utils/gui/div/GUIGeometry.h>
+#include <netedit/elements/moving/GNEMoveResult.h>
 #include <utils/gui/div/GUIDottedGeometry.h>
+#include <utils/gui/div/GUIGeometry.h>
 
 #include "GNENetworkElement.h"
-
 
 // ===========================================================================
 // class declarations
 // ===========================================================================
-class GNENet;
+
+class GNEConnection;
+class GNECrossing;
+class GNEEdgeTemplate;
+class GNEEdgeType;
 class GNEJunction;
 class GNELane;
-class GNEConnection;
+class GNEMoveElementEdge;
+class GNEMoveOperation;
+class GNENet;
 class GNERouteProbe;
-class GNECrossing;
-class GNEEdgeType;
-class GNEEdgeTemplate;
 
 // ===========================================================================
 // class definitions
 // ===========================================================================
-/**
- * @class GNEEdge
- * @brief A road/street connecting two junctions (netedit-version)
- *
- * @see MSEdge
- */
+
 class GNEEdge : public GNENetworkElement, public GNECandidateElement {
 
     /// @brief Friend class
     friend class GNEChange_Lane;
     friend class GNEChange_Connection;
+    friend class GNEMoveElementEdge;
 
 public:
     /// @brief Definition of the connection's vector
@@ -69,6 +68,20 @@ public:
 
     /// @brief Destructor.
     ~GNEEdge();
+
+    /// @brief methods to retrieve the elements linked to this edge
+    /// @{
+
+    /// @brief get GNEMoveElement associated with this edge
+    GNEMoveElement* getMoveElement() const override;
+
+    /// @brief get parameters associated with this edge
+    Parameterised* getParameters() override;
+
+    /// @brief get parameters associated with this edge (constant)
+    const Parameterised* getParameters() const override;
+
+    /// @}
 
     /// @brief get from Junction (only used to increase readability)
     inline GNEJunction* getFromJunction() const {
@@ -90,7 +103,7 @@ public:
     /// @{
 
     /// @brief update pre-computed geometry information
-    void updateGeometry();
+    void updateGeometry() override;
 
     /// @brief Returns position of hierarchical element in view
     Position getPositionInView() const;
@@ -101,38 +114,29 @@ public:
     /// @{
 
     /// @brief check if draw from contour (green)
-    bool checkDrawFromContour() const;
+    bool checkDrawFromContour() const override;
 
     /// @brief check if draw from contour (magenta)
-    bool checkDrawToContour() const;
+    bool checkDrawToContour() const override;
 
     /// @brief check if draw related contour (cyan)
-    bool checkDrawRelatedContour() const;
+    bool checkDrawRelatedContour() const override;
 
     /// @brief check if draw over contour (orange)
-    bool checkDrawOverContour() const;
+    bool checkDrawOverContour() const override;
 
     /// @brief check if draw delete contour (pink/white)
-    bool checkDrawDeleteContour() const;
+    bool checkDrawDeleteContour() const override;
 
     /// @brief check if draw delete contour small (pink/white)
-    bool checkDrawDeleteContourSmall() const;
+    bool checkDrawDeleteContourSmall() const override;
 
     /// @brief check if draw select contour (blue)
-    bool checkDrawSelectContour() const;
+    bool checkDrawSelectContour() const override;
 
     /// @brief check if draw move contour (red)
-    bool checkDrawMoveContour() const;
+    bool checkDrawMoveContour() const override;
 
-    /// @}
-
-    /// @name Functions related with move elements
-    /// @{
-    /// @brief get move operation for the given shapeOffset (can be nullptr)
-    GNEMoveOperation* getMoveOperation();
-
-    /// @brief remove geometry point in the clicked position
-    void removeGeometryPoint(const Position clickedPosition, GNEUndoList* undoList);
     /// @}
 
     /// @name functions for geometry points
@@ -211,8 +215,20 @@ public:
      * @param[in] key The attribute key
      * @return string with the value associated to key
      */
-    std::string getAttribute(SumoXMLAttr key) const;
+    std::string getAttribute(SumoXMLAttr key) const override;
     std::string getAttributeForSelection(SumoXMLAttr key) const;
+
+    /* @brief method for getting the Attribute of an XML key in double format
+     * @param[in] key The attribute key
+     * @return double with the value associated to key
+     */
+    double getAttributeDouble(SumoXMLAttr key) const override;
+
+    /* @brief method for getting the Attribute of an XML key in position format
+     * @param[in] key The attribute key
+     * @return position with the value associated to key
+     */
+    Position getAttributePosition(SumoXMLAttr key) const override;
 
     /* @brief method for getting the Attribute of an XML key in Position format
      * @param[in] key The attribute key
@@ -225,14 +241,14 @@ public:
      * @param[in] value The new value
      * @param[in] undoList The undoList on which to register changes
      */
-    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList);
+    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList) override;
 
     /* @brief method for setting the attribute and letting the object perform additional changes
      * @param[in] key The attribute key
      * @param[in] value The new value
      * @param[in] undoList The undoList on which to register changes
      */
-    bool isValid(SumoXMLAttr key, const std::string& value);
+    bool isValid(SumoXMLAttr key, const std::string& value) override;
 
     /* @brief method for check if the value for certain attribute is set
      * @param[in] key The attribute key
@@ -245,9 +261,6 @@ public:
     bool isAttributeComputed(SumoXMLAttr key) const;
 
     /// @}
-
-    /// @brief get parameters map
-    const Parameterised::Map& getACParametersMap() const;
 
     /// @brief set responsibility for deleting internal structures
     void setResponsible(bool newVal);
@@ -409,6 +422,9 @@ private:
         const std::vector<GNEDemandElement*>& getDemandElements() const;
     };
 
+    /// @brief move element edge
+    GNEMoveElementEdge* myMoveElementEdge = nullptr;
+
     /// @brief edge boundary
     Boundary myEdgeBoundary;
 
@@ -416,13 +432,7 @@ private:
     bool myUpdateGeometry;
 
     /// @brief set attribute after validation
-    void setAttribute(SumoXMLAttr key, const std::string& value);
-
-    /// @brief set move shape
-    void setMoveShape(const GNEMoveResult& moveResult);
-
-    /// @brief commit move shape
-    void commitMoveShape(const GNEMoveResult& moveResult, GNEUndoList* undoList);
+    void setAttribute(SumoXMLAttr key, const std::string& value) override;
 
     /**@brief changes the number of lanes.
      * When reducing the number of lanes, higher-numbered lanes are removed first.
@@ -506,18 +516,6 @@ private:
 
     /// @brief check if given stacked positions are overlapped
     bool areStackPositionOverlapped(const GNEEdge::StackPosition& vehicleA, const GNEEdge::StackPosition& vehicleB) const;
-
-    /// @brief process moving edge when only from junction is selected
-    GNEMoveOperation* processMoveFromJunctionSelected(const PositionVector originalShape, const Position mousePosition, const double snapRadius);
-
-    /// @brief process moving edge when only to junction is selected
-    GNEMoveOperation* processMoveToJunctionSelected(const PositionVector originalShape, const Position mousePosition, const double snapRadius);
-
-    /// @brief process moving edge when both junctions are selected
-    GNEMoveOperation* processMoveBothJunctionSelected();
-
-    /// @brief process moving edge when none junction are selected
-    GNEMoveOperation* processNoneJunctionSelected(const double snapRadius);
 
     /// @brief get geometry point radius
     double getGeometryPointRadius() const;

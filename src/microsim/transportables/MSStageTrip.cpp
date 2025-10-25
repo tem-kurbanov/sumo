@@ -185,7 +185,7 @@ MSStageTrip::reroute(const SUMOTime time, MSTransportableRouter& router, MSTrans
         }
         if (router.compute(origin, destination, departPos, prevStop == nullptr ? "" : prevStop->getID(),
                            myArrivalPos, myDestinationStop == nullptr ? "" : myDestinationStop->getID(),
-                           transportable->getMaxSpeed() * myWalkFactor, vehicle, myModeSet, time, result)) {
+                           transportable->getMaxSpeed() * myWalkFactor, vehicle, transportable->getVTypeParameter(), myModeSet, time, result)) {
             double totalCost = 0;
             for (const MSTransportableRouter::TripItem& item : result) {
                 totalCost += item.cost;
@@ -247,7 +247,7 @@ MSStageTrip::reroute(const SUMOTime time, MSTransportableRouter& router, MSTrans
                     previous->setCosts(it->cost);
                     previous->setTrip(this);
                     stages.push_back(previous);
-                } else if (isTaxi) {
+                } else if (isTaxi && it->line == minVehicle->getID()) {
                     const ConstMSEdgeVector& prevEdges = previous->getEdges();
                     if (prevEdges.size() >= 2 && previous->getDestinationStop() == nullptr) {
                         // determine walking direction and let the previous

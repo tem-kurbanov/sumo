@@ -42,9 +42,20 @@ GNERouteDistribution::GNERouteDistribution(const std::string& ID, GNENet* net, c
 GNERouteDistribution::~GNERouteDistribution() {}
 
 
-GNEMoveOperation*
-GNERouteDistribution::getMoveOperation() {
-    // distributions cannot be moved
+GNEMoveElement*
+GNERouteDistribution::getMoveElement() const {
+    return nullptr;
+}
+
+
+Parameterised*
+GNERouteDistribution::getParameters() {
+    return nullptr;
+}
+
+
+const Parameterised*
+GNERouteDistribution::getParameters() const {
     return nullptr;
 }
 
@@ -201,20 +212,20 @@ GNERouteDistribution::getAttribute(SumoXMLAttr key) const {
         case SUMO_ATTR_ID:
             return getMicrosimID();
         default:
-            return getCommonAttribute(this, key);
+            return getCommonAttribute(key);
     }
 }
 
 
 double
 GNERouteDistribution::getAttributeDouble(SumoXMLAttr key) const {
-    throw InvalidArgument(getTagStr() + " doesn't have a double attribute of type '" + toString(key) + "'");
+    return getCommonAttributeDouble(key);
 }
 
 
 Position
 GNERouteDistribution::getAttributePosition(SumoXMLAttr key) const {
-    throw InvalidArgument(getTagStr() + " doesn't have a Position attribute of type '" + toString(key) + "'");
+    return getCommonAttributePosition(key);
 }
 
 
@@ -240,7 +251,7 @@ GNERouteDistribution::isValid(SumoXMLAttr key, const std::string& value) {
         case SUMO_ATTR_ID:
             return isValidDemandElementID(NamespaceIDs::routes, value);
         default:
-            return isCommonValid(key, value);
+            return isCommonAttributeValid(key, value);
     }
 }
 
@@ -256,12 +267,6 @@ GNERouteDistribution::getHierarchyName() const {
     return getTagStr() + ": " + getAttribute(SUMO_ATTR_ID) ;
 }
 
-
-const Parameterised::Map&
-GNERouteDistribution::getACParametersMap() const {
-    throw InvalidArgument(getTagStr() + " doesn't have parameters");
-}
-
 // ===========================================================================
 // private
 // ===========================================================================
@@ -273,21 +278,9 @@ GNERouteDistribution::setAttribute(SumoXMLAttr key, const std::string& value) {
             setDemandElementID(value);
             break;
         default:
-            setCommonAttribute(this, key, value);
+            setCommonAttribute(key, value);
             break;
     }
-}
-
-
-void
-GNERouteDistribution::setMoveShape(const GNEMoveResult& /*moveResult*/) {
-    // distributions cannot be moved
-}
-
-
-void
-GNERouteDistribution::commitMoveShape(const GNEMoveResult& /*moveResult*/, GNEUndoList* /*undoList*/) {
-    // distributions cannot be moved
 }
 
 /****************************************************************************/

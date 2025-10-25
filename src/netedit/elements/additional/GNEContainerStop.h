@@ -45,11 +45,13 @@ public:
      * @param[in] parkingLength parking length
      * @param[in] color containerStop color
      * @param[in] friendlyPos enable or disable friendly position
+     * @param[in] angle container stop angle
      * @param[in] parameters generic parameters
      */
-    GNEContainerStop(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane, const double startPos, const double endPos,
-                     const std::string& name, const std::vector<std::string>& lines, int containerCapacity, double parkingLength,
-                     const RGBColor& color, bool friendlyPosition, const Parameterised::Map& parameters);
+    GNEContainerStop(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane,
+                     const double startPos, const double endPos, const std::string& name, const std::vector<std::string>& lines,
+                     const int containerCapacity, const double parkingLength, const RGBColor& color, const bool friendlyPosition,
+                     const double angle, const Parameterised::Map& parameters);
 
     /// @brief Destructor
     ~GNEContainerStop();
@@ -63,7 +65,7 @@ public:
     /// @{
 
     /// @brief update pre-computed geometry information
-    void updateGeometry();
+    void updateGeometry() override;
 
     /// @}
 
@@ -84,27 +86,27 @@ public:
      * @param[in] key The attribute key
      * @return string with the value associated to key
      */
-    std::string getAttribute(SumoXMLAttr key) const;
+    std::string getAttribute(SumoXMLAttr key) const override;
 
-    /* @brief method for getting the Attribute of an XML key in double format (to avoid unnecessary parse<double>(...) for certain attributes)
+    /* @brief method for getting the Attribute of an XML key in double format
      * @param[in] key The attribute key
      * @return double with the value associated to key
      */
-    double getAttributeDouble(SumoXMLAttr key) const;
+    double getAttributeDouble(SumoXMLAttr key) const override;
 
     /* @brief method for setting the attribute and letting the object perform additional changes
      * @param[in] key The attribute key
      * @param[in] value The new value
      * @param[in] undoList The undoList on which to register changes
      */
-    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList);
+    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList) override;
 
     /* @brief method for checking if the key and their correspond attribute are valids
      * @param[in] key The attribute key
      * @param[in] value The value associated to key key
      * @return true if the value is valid, false in other case
      */
-    bool isValid(SumoXMLAttr key, const std::string& value);
+    bool isValid(SumoXMLAttr key, const std::string& value) override;
 
     /// @}
 
@@ -120,7 +122,7 @@ protected:
 
 private:
     /// @brief set attribute after validation
-    void setAttribute(SumoXMLAttr key, const std::string& value);
+    void setAttribute(SumoXMLAttr key, const std::string& value) override;
 
     /// @brief Invalidated copy constructor.
     GNEContainerStop(const GNEContainerStop&) = delete;

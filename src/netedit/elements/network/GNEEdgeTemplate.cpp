@@ -48,6 +48,24 @@ GNEEdgeTemplate::getHierarchicalElement() {
 }
 
 
+GNEMoveElement*
+GNEEdgeTemplate::getMoveElement() const {
+    return nullptr;
+}
+
+
+Parameterised*
+GNEEdgeTemplate::getParameters() {
+    return nullptr;
+}
+
+
+const Parameterised*
+GNEEdgeTemplate::getParameters() const {
+    return nullptr;
+}
+
+
 const std::vector<GNELaneTemplate*>&
 GNEEdgeTemplate::getLaneTemplates() const {
     return myLaneTemplates;
@@ -140,6 +158,18 @@ GNEEdgeTemplate::getAttribute(SumoXMLAttr key) const {
 }
 
 
+double
+GNEEdgeTemplate::getAttributeDouble(SumoXMLAttr key) const {
+    return myEdge->getAttributeDouble(key);
+}
+
+
+Position
+GNEEdgeTemplate::getAttributePosition(SumoXMLAttr key) const {
+    return getCommonAttributePosition(key);
+}
+
+
 PositionVector
 GNEEdgeTemplate::getAttributePositionVector(SumoXMLAttr key) const {
     return myEdge->getAttributePositionVector(key);
@@ -174,12 +204,6 @@ GNEEdgeTemplate::getPopUpID() const {
 std::string
 GNEEdgeTemplate::getHierarchyName() const {
     return myEdge->getHierarchyName();
-}
-
-
-const Parameterised::Map&
-GNEEdgeTemplate::getACParametersMap() const {
-    return myEdge->getACParametersMap();
 }
 
 // ===========================================================================

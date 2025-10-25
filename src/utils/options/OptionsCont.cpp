@@ -37,6 +37,7 @@
 #include <utils/common/UtilExceptions.h>
 #include <utils/common/FileHelpers.h>
 #include <utils/common/MsgHandler.h>
+#include <utils/common/StdDefs.h>
 #include <utils/common/StringTokenizer.h>
 #include <utils/common/StringUtils.h>
 #include <utils/xml/SUMOSAXAttributes.h>
@@ -351,7 +352,9 @@ OptionsCont::relocateFiles(const std::string& configuration) const {
         if (addresse.second->isFileName() && addresse.second->isSet()) {
             StringVector fileList = StringVector(addresse.second->getStringVector());
             for (auto& file : fileList) {
-                file = FileHelpers::checkForRelativity(file, configuration);
+                if (addresse.first != "configuration-file") {
+                    file = FileHelpers::checkForRelativity(file, configuration);
+                }
                 try {
                     file = StringUtils::urlDecode(file);
                 } catch (NumberFormatException& e) {
@@ -615,6 +618,7 @@ OptionsCont::splitLines(std::ostream& os, std::string what,
 bool
 OptionsCont::processMetaOptions(bool missingOptions) {
     MsgHandler::setupI18n(getString("language"));
+    localizeDescriptions();
     if (missingOptions) {
         // no options are given
         std::cout << myFullName << std::endl;
@@ -716,6 +720,24 @@ OptionsCont::processMetaOptions(bool missingOptions) {
 }
 
 
+void 
+OptionsCont::localizeDescriptions() {
+    if (!myAmLocalized && gLocaleInitialized) {
+        // options
+        for (auto option : myAddresses) {
+            option.second->setDescription(TL(option.second->getDescription().c_str()));
+        }
+        // examples
+        for (auto example : myCallExamples) {
+            example.second = TL(example.second.c_str());
+        }
+        // other text
+        setApplicationDescription(TL(myAppDescription.c_str()));
+        myAmLocalized = true;
+    }
+}
+
+
 const std::vector<std::string>&
 OptionsCont::getSubTopics() const {
     return mySubTopics;
@@ -808,7 +830,7 @@ OptionsCont::printHelp(std::ostream& os) {
         }
         if (!foundTopic) {
             // print topic list
-            os << "Help Topics:" << std::endl;
+            os << TL("Help Topics:") << std::endl;
             for (const std::string& t : mySubTopics) {
                 os << "    " << t << std::endl;
             }
@@ -816,7 +838,7 @@ OptionsCont::printHelp(std::ostream& os) {
         return;
     }
     // print usage BNF
-    os << "Usage: " << myAppName << " [OPTION]*" << std::endl;
+    os << TL("Usage: ") << myAppName << TL(" [OPTION]*") << std::endl;
     // print additional text if any
     if (myAdditionalMessage.length() > 0) {
         os << myAdditionalMessage << std::endl << std::endl;
@@ -828,21 +850,21 @@ OptionsCont::printHelp(std::ostream& os) {
     os << std::endl;
     // print usage examples, calc size first
     if (myCallExamples.size() != 0) {
-        os << "Examples:" << std::endl;
+        os << TL("Examples:") << std::endl;
         for (const auto& callExample : myCallExamples) {
             os << "  " << myAppName << ' ' << callExample.first << std::endl;
             os << "    " << callExample.second << std::endl;
         }
     }
     os << std::endl;
-    os << "Report bugs at <https://github.com/eclipse-sumo/sumo/issues>." << std::endl;
-    os << "Get in contact via <sumo@dlr.de>." << std::endl;
+    os << TLF("Report bugs at %.", "<https://github.com/eclipse-sumo/sumo/issues>") << std::endl;
+    os << TLF("Get in contact via %.", "<sumo@dlr.de>") << std::endl;
 }
 
 
 void
 OptionsCont::printHelpOnTopic(const std::string& topic, int tooLarge, int maxSize, std::ostream& os) {
-    os << topic << " Options:" << std::endl;
+    os << TLF("% Options:", topic) << std::endl;
     for (const auto& entry : mySubTopicEntries[topic]) {
         // start length computation
         int csize = (int)entry.length() + 2;
@@ -883,12 +905,12 @@ OptionsCont::printHelpOnTopic(const std::string& topic, int tooLarge, int maxSiz
 void
 OptionsCont::writeConfiguration(std::ostream& os, const bool filled,
                                 const bool complete, const bool addComments, const std::string& relativeTo,
-                                const bool forceRelative, const bool inComment) const {
+                                const bool forceRelative, const bool inComment, const std::string& indent) const {
     if (!inComment) {
         writeXMLHeader(os, false);
     }
     const std::string& app = myAppName == "sumo-gui" ? "sumo" : myAppName;
-    os << "<" << app << "Configuration xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+    os << indent << "<" << app << "Configuration xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
        << "xsi:noNamespaceSchemaLocation=\"http://sumo.dlr.de/xsd/" << app << "Configuration.xsd\">\n\n";
     for (std::string subtopic : mySubTopics) {
         if (subtopic == "Configuration" && !complete) {
@@ -908,14 +930,14 @@ OptionsCont::writeConfiguration(std::ostream& os, const bool filled,
                 continue;
             }
             if (!hadOne) {
-                os << "    <" << subtopic << ">\n";
+                os << indent << "    <" << subtopic << ">\n";
             }
             // add the comment if wished
             if (addComments) {
-                os << "        <!-- " << StringUtils::escapeXML(o->getDescription(), inComment) << " -->\n";
+                os << indent << "        <!-- " << StringUtils::escapeXML(o->getDescription(), inComment) << " -->\n";
             }
             // write the option and the value (if given)
-            os << "        <" << name << " value=\"";
+            os << indent << "        <" << name << " value=\"";
             if (o->isSet() && (filled || o->isDefault())) {
                 if (o->isFileName() && relativeTo != "") {
                     StringVector fileList = StringTokenizer(o->getValueString(), ",").getVector();
@@ -963,10 +985,10 @@ OptionsCont::writeConfiguration(std::ostream& os, const bool filled,
             hadOne = true;
         }
         if (hadOne) {
-            os << "    </" << subtopic << ">\n\n";
+            os << indent << "    </" << subtopic << ">\n\n";
         }
     }
-    os << "</" << app << "Configuration>" << std::endl;  // flushing seems like a good idea here
+    os << indent << "</" << app << "Configuration>" << std::endl;  // flushing seems like a good idea here
 }
 
 
@@ -974,10 +996,8 @@ void
 OptionsCont::writeSchema(std::ostream& os) {
     const std::string& app = myAppName == "sumo-gui" ? "sumo" : myAppName;
     writeXMLHeader(os, false);
-    os << "<xsd:schema elementFormDefault=\"qualified\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n\n";
-    os << "    <xsd:include schemaLocation=\"baseTypes.xsd\"/>\n";
-    os << "    <xsd:element name=\"" << app << "Configuration\" type=\"configurationType\"/>\n\n";
-    os << "    <xsd:complexType name=\"configurationType\">\n";
+    os << "<xsd:schema elementFormDefault=\"qualified\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n";
+    os << "    <xsd:complexType name=\"" << app << "ConfigurationType\">\n";
     os << "        <xsd:all>\n";
     for (std::string subtopic : mySubTopics) {
         if (subtopic == "Configuration") {
@@ -985,7 +1005,7 @@ OptionsCont::writeSchema(std::ostream& os) {
         }
         std::replace(subtopic.begin(), subtopic.end(), ' ', '_');
         subtopic = StringUtils::to_lower_case(subtopic);
-        os << "            <xsd:element name=\"" << subtopic << "\" type=\"" << subtopic << "TopicType\" minOccurs=\"0\"/>\n";
+        os << "            <xsd:element name=\"" << subtopic << "\" type=\"" << app << subtopic << "TopicType\" minOccurs=\"0\"/>\n";
     }
     os << "        </xsd:all>\n";
     os << "    </xsd:complexType>\n\n";
@@ -996,7 +1016,7 @@ OptionsCont::writeSchema(std::ostream& os) {
         const std::vector<std::string>& entries = mySubTopicEntries.find(subtopic)->second;
         std::replace(subtopic.begin(), subtopic.end(), ' ', '_');
         subtopic = StringUtils::to_lower_case(subtopic);
-        os << "    <xsd:complexType name=\"" << subtopic << "TopicType\">\n";
+        os << "    <xsd:complexType name=\"" << app << subtopic << "TopicType\">\n";
         os << "        <xsd:all>\n";
         for (const auto& entry : entries) {
             Option* o = getSecure(entry);
@@ -1019,13 +1039,11 @@ OptionsCont::writeSchema(std::ostream& os) {
 
 void
 OptionsCont::writeXMLHeader(std::ostream& os, const bool includeConfig) const {
-    time_t rawtime;
-    char buffer [80];
-
     os << "<?xml version=\"1.0\"" << SUMOSAXAttributes::ENCODING << "?>\n\n";
-    time(&rawtime);
-    strftime(buffer, 80, "<!-- generated on %F %T by ", localtime(&rawtime));
-    os << buffer << myFullName << "\n";
+    os << "<!-- ";
+    if (!getBool("write-metadata")) {
+        os << "generated on " << StringUtils::isoTimeString() << " by " << myFullName << "\n";
+    }
     if (getBool("write-license")) {
         os << "This data file and the accompanying materials\n"
            "are made available under the terms of the Eclipse Public License v2.0\n"
@@ -1038,7 +1056,7 @@ OptionsCont::writeXMLHeader(std::ostream& os, const bool includeConfig) const {
            "https://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html\n"
            "SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later\n";
     }
-    if (includeConfig) {
+    if (includeConfig && !getBool("write-metadata")) {
         writeConfiguration(os, true, false, false, "", false, true);
     }
     os << "-->\n\n";

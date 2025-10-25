@@ -62,6 +62,7 @@
 #include <utils/gui/div/GUIGlobalSelection.h>
 #include <utils/gui/div/GUIUserIO.h>
 #include <utils/gui/events/GUIEvent_Message.h>
+#include <utils/gui/images/GUITextureSubSys.h>
 #include <utils/gui/settings/GUICompleteSchemeStorage.h>
 #include <utils/gui/settings/GUISettingsHandler.h>
 #include <utils/gui/shortcuts/GUIShortcutsSubSys.h>
@@ -141,6 +142,8 @@ FXDEFMAP(GNEApplicationWindow) GNEApplicationWindowMap[] = {
     FXMAPFUNC(SEL_UPDATE,   MID_GNE_TOOLBARFILE_RELOAD_TLSPROGRAMS, GNEApplicationWindow::onUpdReloadTLSPrograms),
     FXMAPFUNC(SEL_COMMAND,  MID_HOTKEY_CTRL_SHIFT_K_SAVETLS,        GNEApplicationWindow::onCmdSaveTLSPrograms),
     FXMAPFUNC(SEL_UPDATE,   MID_HOTKEY_CTRL_SHIFT_K_SAVETLS,        GNEApplicationWindow::onUpdSaveTLSPrograms),
+    FXMAPFUNC(SEL_COMMAND,  MID_GNE_TOOLBARFILE_SAVETLSPROGRAMS_AS, GNEApplicationWindow::onCmdSaveTLSProgramsAs),
+    FXMAPFUNC(SEL_UPDATE,   MID_GNE_TOOLBARFILE_SAVETLSPROGRAMS_AS, GNEApplicationWindow::onUpdSaveTLSPrograms),
     // edge types
     FXMAPFUNC(SEL_COMMAND,  MID_HOTKEY_CTRL_H_APPSETTINGS_OPENEDGETYPES,    GNEApplicationWindow::onCmdOpenEdgeTypes),
     FXMAPFUNC(SEL_UPDATE,   MID_HOTKEY_CTRL_H_APPSETTINGS_OPENEDGETYPES,    GNEApplicationWindow::onUpdNeedsNetwork),
@@ -149,7 +152,7 @@ FXDEFMAP(GNEApplicationWindow) GNEApplicationWindowMap[] = {
     FXMAPFUNC(SEL_COMMAND,  MID_HOTKEY_CTRL_SHIFT_H_SAVEEDGETYPES,          GNEApplicationWindow::onCmdSaveEdgeTypes),
     FXMAPFUNC(SEL_UPDATE,   MID_HOTKEY_CTRL_SHIFT_H_SAVEEDGETYPES,          GNEApplicationWindow::onUpdSaveEdgeTypes),
     FXMAPFUNC(SEL_COMMAND,  MID_GNE_TOOLBARFILE_SAVEEDGETYPES_AS,           GNEApplicationWindow::onCmdSaveEdgeTypesAs),
-    FXMAPFUNC(SEL_UPDATE,   MID_GNE_TOOLBARFILE_SAVEEDGETYPES_AS,           GNEApplicationWindow::onUpdSaveEdgeTypesAs),
+    FXMAPFUNC(SEL_UPDATE,   MID_GNE_TOOLBARFILE_SAVEEDGETYPES_AS,           GNEApplicationWindow::onUpdSaveEdgeTypes),
     // additionals
     FXMAPFUNC(SEL_COMMAND,  MID_HOTKEY_CTRL_A_STARTSIMULATION_OPENADDITIONALELEMENTS,   GNEApplicationWindow::onCmdOpenAdditionalElements),
     FXMAPFUNC(SEL_UPDATE,   MID_HOTKEY_CTRL_A_STARTSIMULATION_OPENADDITIONALELEMENTS,   GNEApplicationWindow::onUpdNeedsNetwork),
@@ -521,7 +524,7 @@ GNEApplicationWindow::GNEApplicationWindow(FXApp* app, const GNETagPropertiesDat
     app->setTooltipPause(1000000000);
     // set SUMO Options descriptions
     mySumoOptions.setApplicationDescription(TL("A microscopic, multi-modal traffic simulation."));
-    mySumoOptions.setApplicationName("sumo", "Eclipse SUMO sumo Version " VERSION_STRING);
+    mySumoOptions.setApplicationName("sumo", "Eclipse SUMO sumo " VERSION_STRING);
     // set default netedit options
     GNELoadThread::fillOptions(myOriginalNeteditOptions);
     GNELoadThread::setDefaultOptions(myOriginalNeteditOptions);
@@ -923,17 +926,8 @@ GNEApplicationWindow::onCmdOpenTLSPrograms(FXObject*, FXSelector, void*) {
         // set file to load
         neteditOptions.resetWritable();
         neteditOptions.set("tls-file", TLSfileDialog.getFilename());
-        // Run parser
-        myUndoList->begin(Supermode::NETWORK, GUIIcon::MODETLS, TLF("loading TLS Programs from '%'", TLSfileDialog.getFilename()));
-        myNet->computeNetwork(this);
-        if (myNet->getViewNet()->getViewParent()->getTLSEditorFrame()->parseTLSPrograms(TLSfileDialog.getFilename()) == false) {
-            // Abort undo/redo
-            myUndoList->abortAllChangeGroups();
-        } else {
-            // commit undo/redo operation
-            myUndoList->end();
-            update();
-        }
+        // load traffic lights
+        loadTrafficLights(false);
     }
     return 1;
 }
@@ -941,19 +935,8 @@ GNEApplicationWindow::onCmdOpenTLSPrograms(FXObject*, FXSelector, void*) {
 
 long
 GNEApplicationWindow::onCmdReloadTLSPrograms(FXObject*, FXSelector, void*) {
-    // get option container
-    auto& neteditOptions = OptionsCont::getOptions();
-    // Run parser
-    myUndoList->begin(Supermode::NETWORK, GUIIcon::MODETLS, TL("loading TLS Programs from '") + neteditOptions.getString("tls-file") + "'");
-    myNet->computeNetwork(this);
-    if (myNet->getViewNet()->getViewParent()->getTLSEditorFrame()->parseTLSPrograms(neteditOptions.getString("tls-file")) == false) {
-        // Abort undo/redo
-        myUndoList->abortAllChangeGroups();
-    } else {
-        // commit undo/redo operation
-        myUndoList->end();
-        update();
-    }
+    // load traffic lights
+    loadTrafficLights(true);
     return 1;
 }
 
@@ -982,32 +965,8 @@ GNEApplicationWindow::onCmdOpenEdgeTypes(FXObject*, FXSelector, void*) {
         // set file to load
         neteditOptions.resetWritable();
         neteditOptions.set("edgetypes-file", edgeTypesFileDialog.getFilename());
-        // declare type container
-        NBTypeCont typeContainerAux;
-        // declare type handler
-        NIXMLTypesHandler handler(typeContainerAux);
         // load edge types
-        NITypeLoader::load(handler, {edgeTypesFileDialog.getFilename()}, "types");
-        // write information
-        WRITE_MESSAGE(TLF("Loaded edge types from '%'.", toString(typeContainerAux.size())));
-        // now create GNETypes based on typeContainerAux
-        myViewNet->getUndoList()->begin(Supermode::NETWORK, GUIIcon::EDGE, TL("load edgeTypes"));
-        // iterate over typeContainerAux
-        for (const auto& auxEdgeType : typeContainerAux) {
-            // create new edge type
-            GNEEdgeType* edgeType = new GNEEdgeType(myNet, auxEdgeType.first, auxEdgeType.second);
-            // add lane types
-            for (const auto& laneType : auxEdgeType.second->laneTypeDefinitions) {
-                edgeType->addLaneType(new GNELaneType(edgeType, laneType));
-            }
-            // add it using undoList
-            myViewNet->getUndoList()->add(new GNEChange_EdgeType(edgeType, true), true);
-
-        }
-        // end undo list
-        myViewNet->getUndoList()->end();
-        // refresh edge type selector
-        myViewNet->getViewParent()->getCreateEdgeFrame()->getEdgeTypeSelector()->refreshEdgeTypeSelector();
+        loadEdgeTypes(false);
     }
     return 1;
 }
@@ -1015,32 +974,8 @@ GNEApplicationWindow::onCmdOpenEdgeTypes(FXObject*, FXSelector, void*) {
 
 long
 GNEApplicationWindow::onCmdReloadEdgeTypes(FXObject*, FXSelector, void*) {
-    // declare type container
-    NBTypeCont typeContainerAux;
-    // declare type handler
-    NIXMLTypesHandler handler(typeContainerAux);
     // load edge types
-    NITypeLoader::load(handler, {OptionsCont::getOptions().getString("edgetypes-file")}, "types");
-    // write information
-    WRITE_MESSAGE(TLF("Reloaded edge types from '%'.", toString(typeContainerAux.size())));
-    // now create GNETypes based on typeContainerAux
-    myViewNet->getUndoList()->begin(Supermode::NETWORK, GUIIcon::EDGE, TL("load edgeTypes"));
-    // iterate over typeContainerAux
-    for (const auto& auxEdgeType : typeContainerAux) {
-        // create new edge type
-        GNEEdgeType* edgeType = new GNEEdgeType(myNet, auxEdgeType.first, auxEdgeType.second);
-        // add lane types
-        for (const auto& laneType : auxEdgeType.second->laneTypeDefinitions) {
-            edgeType->addLaneType(new GNELaneType(edgeType, laneType));
-        }
-        // add it using undoList
-        myViewNet->getUndoList()->add(new GNEChange_EdgeType(edgeType, true), true);
-
-    }
-    // end undo list
-    myViewNet->getUndoList()->end();
-    // refresh edge type selector
-    myViewNet->getViewParent()->getCreateEdgeFrame()->getEdgeTypeSelector()->refreshEdgeTypeSelector();
+    loadEdgeTypes(true);
     return 0;
 }
 
@@ -1057,10 +992,10 @@ GNEApplicationWindow::onUpdReloadEdgeTypes(FXObject* sender, FXSelector, void*) 
 
 
 long
-GNEApplicationWindow::onCmdSmartReload(FXObject*, FXSelector, void*) {
+GNEApplicationWindow::onCmdSmartReload(FXObject*, FXSelector sel, void*) {
     auto& neteditOptions = OptionsCont::getOptions();
     // check if close current file
-    if (onCmdClose(0, 0, 0) == 1) {
+    if (onCmdClose(0, sel, 0) == 1) {
         // stop test before calling load thread
         if (myInternalTest) {
             myInternalTest->stopTests();
@@ -1133,10 +1068,10 @@ GNEApplicationWindow::onUpdSmartReload(FXObject* sender, FXSelector, void*) {
 
 
 long
-GNEApplicationWindow::onCmdReloadNetwork(FXObject*, FXSelector, void*) {
+GNEApplicationWindow::onCmdReloadNetwork(FXObject*, FXSelector sel, void*) {
     auto& neteditOptions = OptionsCont::getOptions();
     // check if close current file
-    if (onCmdClose(0, 0, 0) == 1) {
+    if (onCmdClose(0, sel, 0) == 1) {
         // stop test before calling load thread
         if (myInternalTest) {
             myInternalTest->stopTests();
@@ -1207,7 +1142,7 @@ GNEApplicationWindow::onCmdOpenRecent(FXObject*, FXSelector, void* fileData) {
 
 
 long
-GNEApplicationWindow::onCmdClose(FXObject*, FXSelector, void*) {
+GNEApplicationWindow::onCmdClose(FXObject*, FXSelector sel, void*) {
     if (myViewNet == nullptr) {
         return 1;
     } else if (askSaveElements()) {
@@ -1222,25 +1157,27 @@ GNEApplicationWindow::onCmdClose(FXObject*, FXSelector, void*) {
         myEditMenuCommands.networkViewOptions.hideNetworkViewOptionsMenuChecks();
         myEditMenuCommands.demandViewOptions.hideDemandViewOptionsMenuChecks();
         myEditMenuCommands.dataViewOptions.hideDataViewOptionsMenuChecks();
-        // reset files
-        auto& neteditOptions = OptionsCont::getOptions();
-        neteditOptions.resetWritable();
-        neteditOptions.set("configuration-file", "");
-        neteditOptions.set("sumocfg-file", "");
-        neteditOptions.set("net-file", "");
-        neteditOptions.set("tls-file", "");
-        neteditOptions.set("edgetypes-file", "");
-        neteditOptions.set("additional-files", "");
-        neteditOptions.set("route-files", "");
-        neteditOptions.set("meandata-files", "");
-        neteditOptions.set("data-files", "");
-        // also in sumoConfig
-        mySumoOptions.resetWritable();
-        mySumoOptions.set("configuration-file", "");
-        mySumoOptions.set("net-file", "");
-        mySumoOptions.set("additional-files", "");
-        mySumoOptions.set("route-files", "");
-        mySumoOptions.set("data-files", "");
+        // reset files (except if we're reloading)
+        if ((FXSELID(sel) != MID_GNE_TOOLBARFILE_RELOADNETWORK) && (FXSELID(sel) != MID_HOTKEY_CTRL_R_RELOAD)) {
+            auto& neteditOptions = OptionsCont::getOptions();
+            neteditOptions.resetWritable();
+            neteditOptions.set("configuration-file", "");
+            neteditOptions.set("sumocfg-file", "");
+            neteditOptions.set("net-file", "");
+            neteditOptions.set("tls-file", "");
+            neteditOptions.set("edgetypes-file", "");
+            neteditOptions.set("additional-files", "");
+            neteditOptions.set("route-files", "");
+            neteditOptions.set("meandata-files", "");
+            neteditOptions.set("data-files", "");
+            // also in sumoConfig
+            mySumoOptions.resetWritable();
+            mySumoOptions.set("configuration-file", "");
+            mySumoOptions.set("net-file", "");
+            mySumoOptions.set("additional-files", "");
+            mySumoOptions.set("route-files", "");
+            mySumoOptions.set("data-files", "");
+        }
         return 1;
     } else {
         return 0;
@@ -1369,8 +1306,12 @@ GNEApplicationWindow::handleEvent_NetworkLoaded(GUIEvent* e) {
     auto& neteditOptions = OptionsCont::getOptions();
     // check whether the loading was successful
     if (ec->net == nullptr) {
-        // report failure
-        setStatusBarText(TLF("Loading of network '%' failed", ec->file));
+        if (ec->file.size() > 0) {
+            // report failure
+            setStatusBarText(TLF("Loading of network '%' failed", ec->file));
+        } else {
+            setStatusBarText("");
+        }
     } else {
         // set new Net
         myNet = ec->net;
@@ -1740,10 +1681,10 @@ GNEApplicationWindow::loadOptionOnStartup() {
         myLoadThread->loadNetworkOrConfig();
         // add it into recent networks and configs
         if (neteditOptions.getString("net-file").size() > 0) {
-            myMenuBarFile.myRecentNetworks.appendFile(neteditOptions.getString("net-file").c_str());
+            myMenuBarFile.myRecentNetworks.appendFile(FXPath::absolute(neteditOptions.getString("net-file").c_str()));
         }
         if (neteditOptions.getString("configuration-file").size() > 0) {
-            myMenuBarFile.myRecentConfigs.appendFile(neteditOptions.getString("configuration-file").c_str());
+            myMenuBarFile.myRecentConfigs.appendFile(FXPath::absolute(neteditOptions.getString("configuration-file").c_str()));
         }
     }
 }
@@ -2163,7 +2104,7 @@ GNEApplicationWindow::onCmdNewWindow(FXObject*, FXSelector sel, void* /*ptr*/) {
     // get extra arguments
     std::string extraArg;
     if (sel == MID_GNE_POSTPROCESSINGNETGENERATE) {
-        extraArg = " -s " + myNetgenerateOptions.getValueString("output-file");
+        extraArg = " -s \"" + StringUtils::escapeShell(myNetgenerateOptions.getValueString("output-file")) + "\" ";
     }
     FXRegistry reg("SUMO netedit", "netedit");
     std::string netedit = "netedit";
@@ -3797,6 +3738,8 @@ GNEApplicationWindow::onCmdSaveTLSProgramsAs(FXObject*, FXSelector, void*) {
         // change value of "tls-file"
         neteditOptions.resetWritable();
         neteditOptions.set("tls-file", TLSfileDialog.getFilename());
+        // enable save netedit config
+        myNet->getSavingStatus()->requireSaveNeteditConfig();
         // set focus again in viewNet
         myViewNet->setFocus();
         // save TLS Programs
@@ -3821,6 +3764,8 @@ GNEApplicationWindow::onCmdSaveEdgeTypesAs(FXObject*, FXSelector, void*) {
         // change value of "edgetypes-file"
         neteditOptions.resetWritable();
         neteditOptions.set("edgetypes-file", edgeTypeFileDialog.getFilename());
+        // enable save netedit config
+        myNet->getSavingStatus()->requireSaveNeteditConfig();
         // set focus again in viewNet
         myViewNet->setFocus();
         // save edgeTypes
@@ -3828,18 +3773,6 @@ GNEApplicationWindow::onCmdSaveEdgeTypesAs(FXObject*, FXSelector, void*) {
     } else {
         return 1;
     }
-}
-
-
-long
-GNEApplicationWindow::onUpdSaveEdgeTypesAs(FXObject* sender, FXSelector, void*) {
-    // check if net exist and there are edge types
-    if (myNet && (myNet->getAttributeCarriers()->getEdgeTypes().size() > 0)) {
-        sender->handle(this, FXSEL(SEL_COMMAND, ID_ENABLE), nullptr);
-    } else {
-        sender->handle(this, FXSEL(SEL_COMMAND, ID_DISABLE), nullptr);
-    }
-    return 1;
 }
 
 
@@ -4558,14 +4491,14 @@ GNEApplicationWindow::onCmdSaveMeanDataElementsUnified(FXObject* sender, FXSelec
 bool
 GNEApplicationWindow::askSaveElements() {
     if (myNet) {
-        bool abortSaving = false;
-        const auto saveNetwork = myNet->getSavingStatus()->askSaveNetwork(abortSaving);
-        const auto saveAdditionalElements = myNet->getSavingStatus()->askSaveAdditionalElements(abortSaving);
-        const auto saveDemandElements = myNet->getSavingStatus()->askSaveDemandElements(abortSaving);
-        const auto saveDataElements = myNet->getSavingStatus()->askSaveDataElements(abortSaving);
-        const auto saveMeanDataElements = myNet->getSavingStatus()->askSaveMeanDataElements(abortSaving);
+        GNEDialog::Result commonResult = GNEDialog::Result::ACCEPT;
+        const auto saveNetwork = myNet->getSavingStatus()->askSaveNetwork(commonResult);
+        const auto saveAdditionalElements = myNet->getSavingStatus()->askSaveAdditionalElements(commonResult);
+        const auto saveDemandElements = myNet->getSavingStatus()->askSaveDemandElements(commonResult);
+        const auto saveDataElements = myNet->getSavingStatus()->askSaveDataElements(commonResult);
+        const auto saveMeanDataElements = myNet->getSavingStatus()->askSaveMeanDataElements(commonResult);
         // first check if abort saving
-        if (abortSaving) {
+        if (commonResult == GNEDialog::Result::ABORT) {
             return false;
         }
         // save every type of file
@@ -5026,6 +4959,73 @@ GNEApplicationWindow::loadMeanDataElements() {
         if (!myAllowUndoRedoLoading) {
             myUndoList->clear();
         }
+    }
+}
+
+
+void
+GNEApplicationWindow::loadTrafficLights(const bool reloading) {
+    // get TLS file
+    const auto tlsFile = OptionsCont::getOptions().getString("tls-file");
+    // check if file exist
+    if (tlsFile.size() > 0) {
+        // Run parser
+        if (reloading) {
+            WRITE_MESSAGE(TL("Reloading TLS programs"));
+            myUndoList->begin(Supermode::NETWORK, GUIIcon::MODETLS, TLF("reloading TLS Programs from '%'", tlsFile));
+        } else {
+            WRITE_MESSAGE(TLF("Loading TLS programs from '%'", tlsFile));
+            myUndoList->begin(Supermode::NETWORK, GUIIcon::MODETLS, TLF("loading TLS Programs from '%'", tlsFile));
+        }
+        myNet->computeNetwork(this);
+        if (myNet->getViewNet()->getViewParent()->getTLSEditorFrame()->parseTLSPrograms(tlsFile) == false) {
+            // Abort undo/redo
+            myUndoList->abortAllChangeGroups();
+        } else {
+            // commit undo/redo operation
+            myUndoList->end();
+            update();
+        }
+    }
+}
+
+
+void
+GNEApplicationWindow::loadEdgeTypes(const bool reloading) {
+    // get edgeType file
+    const auto edgeTypeFile = OptionsCont::getOptions().getString("edgetypes-file");
+    // check if file exist
+    if (edgeTypeFile.size() > 0) {
+        // declare type container
+        NBTypeCont typeContainerAux;
+        // declare type handler
+        NIXMLTypesHandler handler(typeContainerAux);
+        // load edge types
+        NITypeLoader::load(handler, {edgeTypeFile}, toString(SUMO_TAG_TYPES));
+        // now create GNETypes based on typeContainerAux
+        if (reloading) {
+            WRITE_MESSAGE(TL("Reloading edge types"));
+            myViewNet->getUndoList()->begin(Supermode::NETWORK, GUIIcon::EDGE, TLF("loading edge types from '%'", edgeTypeFile));
+        } else {
+            WRITE_MESSAGE(TLF("Loading edge types from '%'", edgeTypeFile));
+            myViewNet->getUndoList()->begin(Supermode::NETWORK, GUIIcon::EDGE, TLF("reloading edge types from '%'", edgeTypeFile));
+        }
+        // iterate over typeContainerAux
+        for (const auto& auxEdgeType : typeContainerAux) {
+            // create new edge type
+            GNEEdgeType* edgeType = new GNEEdgeType(myNet, auxEdgeType.first, auxEdgeType.second);
+            // add lane types
+            for (const auto& laneType : auxEdgeType.second->laneTypeDefinitions) {
+                edgeType->addLaneType(new GNELaneType(edgeType, laneType));
+            }
+            // add it using undoList
+            myViewNet->getUndoList()->add(new GNEChange_EdgeType(edgeType, true), true);
+
+        }
+        // end undo list
+        myViewNet->getUndoList()->end();
+        // refresh edge type selector
+        myViewNet->getViewParent()->getCreateEdgeFrame()->getEdgeTypeSelector()->refreshEdgeTypeSelector();
     }
 }
 

@@ -45,6 +45,7 @@ SequentialStringBijection::Entry SUMOXMLDefinitions::tags[] = {
     { "poi",                                    SUMO_TAG_POI },
     { "junction",                               SUMO_TAG_JUNCTION },
     { "restriction",                            SUMO_TAG_RESTRICTION },
+    { "preference",                             SUMO_TAG_PREFERENCE },
     { "meso",                                   SUMO_TAG_MESO },
     { "busStop",                                SUMO_TAG_BUS_STOP },
     { "trainStop",                              SUMO_TAG_TRAIN_STOP },
@@ -148,6 +149,7 @@ SequentialStringBijection::Entry SUMOXMLDefinitions::tags[] = {
     { "split",                                  SUMO_TAG_SPLIT },
     { "node",                                   SUMO_TAG_NODE },
     { "type",                                   SUMO_TAG_TYPE },
+    { "types",                                  SUMO_TAG_TYPES },
     { "laneType",                               SUMO_TAG_LANETYPE },
     { "detectorDefinition",                     SUMO_TAG_DETECTOR_DEFINITION },
     { "routeDistribution",                      SUMO_TAG_ROUTE_DISTRIBUTION },
@@ -180,6 +182,7 @@ SequentialStringBijection::Entry SUMOXMLDefinitions::tags[] = {
     { "viewsettings",                           SUMO_TAG_VIEWSETTINGS },
     { "view3D",                                 SUMO_TAG_VIEWSETTINGS_3D },
     { "decal",                                  SUMO_TAG_VIEWSETTINGS_DECAL },
+    { "tracker",                                SUMO_TAG_VIEWSETTINGS_TRACKER },
     { "light",                                  SUMO_TAG_VIEWSETTINGS_LIGHT },
     { "scheme",                                 SUMO_TAG_VIEWSETTINGS_SCHEME },
     { "opengl",                                 SUMO_TAG_VIEWSETTINGS_OPENGL },
@@ -192,6 +195,7 @@ SequentialStringBijection::Entry SUMOXMLDefinitions::tags[] = {
     { "additionals",                            SUMO_TAG_VIEWSETTINGS_ADDITIONALS },
     { "pois",                                   SUMO_TAG_VIEWSETTINGS_POIS },
     { "polys",                                  SUMO_TAG_VIEWSETTINGS_POLYS },
+    { "dataSettings",                           SUMO_TAG_VIEWSETTINGS_DATA },
     { "legend",                                 SUMO_TAG_VIEWSETTINGS_LEGEND },
     { "event",                                  SUMO_TAG_VIEWSETTINGS_EVENT },
     { "jamTime",                                SUMO_TAG_VIEWSETTINGS_EVENT_JAM_TIME },
@@ -767,6 +771,7 @@ SequentialStringBijection::Entry SUMOXMLDefinitions::attrs[] = {
     { "remove",                 SUMO_ATTR_REMOVE },
     { "length",                 SUMO_ATTR_LENGTH },
     { "bidi",                   SUMO_ATTR_BIDI },
+    { "routingType",            SUMO_ATTR_ROUTINGTYPE },
     // Split
     { "idBefore",               SUMO_ATTR_ID_BEFORE },
     { "idAfter",                SUMO_ATTR_ID_AFTER },
@@ -1525,7 +1530,7 @@ StringBijection<LaneSpreadFunction>::Entry SUMOXMLDefinitions::laneSpreadFunctio
 StringBijection<ParkingType>::Entry SUMOXMLDefinitions::parkingTypeValues[] = {
     {"0",              ParkingType::ONROAD },   // default: park on the street
     {"1",              ParkingType::OFFROAD },    // parking off the street
-    {"opportunistic",  ParkingType::OPPORTUNISTIC } // park of the street if there is an opportunity for it
+    {"opportunistic",  ParkingType::OPPORTUNISTIC } // park off the street if there is an opportunity for it
 };
 
 StringBijection<ChargeType>::Entry SUMOXMLDefinitions::chargeTypeValues[] = {
@@ -1728,6 +1733,14 @@ StringBijection<ReferencePosition>::Entry SUMOXMLDefinitions::referencePositionV
     {"center",  ReferencePosition::CENTER} //< must be the last one
 };
 
+StringBijection<MeanDataType>::Entry SUMOXMLDefinitions::meanDataTypeValues[] = {
+    {"traffic",     MeanDataType::TRAFFIC},
+    {"emissions",   MeanDataType::EMISSIONS},
+    {"harmonoise",  MeanDataType::HARMONOISE},
+    {"amitran",     MeanDataType::AMITRAN},
+    {"",            MeanDataType::DEFAULT} //< must be the last one
+};
+
 StringBijection<XMLFileExtension>::Entry SUMOXMLDefinitions::XMLFileExtensionValues[] = {
     {TL("XML files") + std::string(" (*.xml,*.xml.gz)"),    XMLFileExtension::XML},
     {TL("All files") + std::string(" (*)"),                 XMLFileExtension::ALL} //< must be the last one
@@ -1739,7 +1752,7 @@ StringBijection<TXTFileExtension>::Entry SUMOXMLDefinitions::TXTFileExtensionVal
 };
 
 StringBijection<CSVFileExtension>::Entry SUMOXMLDefinitions::CSVFileExtensionValues[] = {
-    {TL("CSV files") + std::string(" (*.txt)"), CSVFileExtension::CSV},
+    {TL("CSV files") + std::string(" (*.csv)"), CSVFileExtension::CSV},
     {TL("All files") + std::string(" (*)"),     CSVFileExtension::ALL} //< must be the last one
 };
 
@@ -1815,19 +1828,19 @@ StringBijection<StateFileExtension>::Entry SUMOXMLDefinitions::stateFileExtensio
 
 StringBijection<SumoConfigFileExtension>::Entry SUMOXMLDefinitions::sumoConfigFileExtensionValues[] = {
     {TL("Sumo config") + std::string(" files (*.sumocfg)"), SumoConfigFileExtension::SUMOCONF},
-    {TL("XML files") + std::string(" (*.xml,*.xml.gz)"),    SumoConfigFileExtension::XML},
+    {TL("XML files") + std::string(" (*.xml)"),              SumoConfigFileExtension::XML},
     {TL("All files") + std::string(" (*)"),                 SumoConfigFileExtension::ALL} //< must be the last one
 };
 
 StringBijection<NeteditConfigFileExtension>::Entry SUMOXMLDefinitions::neteditConfigFileExtensionValues[] = {
     {TL("Netedit config files") + std::string(" (*.netecfg)"),  NeteditConfigFileExtension::NETECFG},
-    {TL("XML files") + std::string(" (*.xml,*.xml.gz)"),        NeteditConfigFileExtension::XML},
+    {TL("XML files") + std::string(" (*.xml)"),                  NeteditConfigFileExtension::XML},
     {TL("All files") + std::string(" (*)"),                     NeteditConfigFileExtension::ALL} //< must be the last one
 };
 
 StringBijection<NetconvertConfigFileExtension>::Entry SUMOXMLDefinitions::netconvertConfigFileExtensionValues[] = {
     {TL("Netconvert config files") + std::string(" (*.netccfg)"),   NetconvertConfigFileExtension::NETCCFG},
-    {TL("XML files") + std::string(" (*.xml,*.xml.gz)"),            NetconvertConfigFileExtension::XML},
+    {TL("XML files") + std::string(" (*.xml"),                      NetconvertConfigFileExtension::XML},
     {TL("All files") + std::string(" (*)"),                         NetconvertConfigFileExtension::ALL} //< must be the last one
 };
 
@@ -1844,7 +1857,7 @@ StringBijection<NetFileExtension>::Entry SUMOXMLDefinitions::netFileExtensionVal
 };
 
 StringBijection<TLSFileExtension>::Entry SUMOXMLDefinitions::TLSFileExtensionValues[] = {
-    {TL("TLS files") + std::string(" (*.ttl.xml,*.ttl.xml.gz)"),    TLSFileExtension::TTL_XML},
+    {TL("TLS files") + std::string(" (*.tll.xml,*.tll.xml.gz)"),    TLSFileExtension::TTL_XML},
     {TL("XML files") + std::string(" (*.xml,*.xml.gz)"),            TLSFileExtension::XML},
     {TL("All files") + std::string(" (*)"),                         TLSFileExtension::ALL} //< must be the last one
 };
@@ -1954,6 +1967,9 @@ StringBijection<ExcludeEmpty> SUMOXMLDefinitions::ExcludeEmptys(
 
 StringBijection<ReferencePosition> SUMOXMLDefinitions::ReferencePositions(
     SUMOXMLDefinitions::referencePositionValues, ReferencePosition::CENTER, false);
+
+StringBijection<MeanDataType> SUMOXMLDefinitions::MeanDataTypes(
+    SUMOXMLDefinitions::meanDataTypeValues, MeanDataType::DEFAULT, false);
 
 StringBijection<XMLFileExtension> SUMOXMLDefinitions::XMLFileExtensions(
     SUMOXMLDefinitions::XMLFileExtensionValues, XMLFileExtension::ALL, false);

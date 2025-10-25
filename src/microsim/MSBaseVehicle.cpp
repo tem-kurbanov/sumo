@@ -483,12 +483,27 @@ MSBaseVehicle::reroute(SUMOTime t, const std::string& info, SUMOAbstractRouter<M
     const double routeCost = router.recomputeCosts(edges, this, t);
     const double previousCost = onInit ? routeCost : router.recomputeCosts(oldEdgesRemaining, this, t);
     const double savings = previousCost - routeCost;
+    bool savingsOk = onInit || info != "device.rerouting" || gWeightsRandomFactor != 1;
+    if (!savingsOk) {
+        MSDevice_Routing* routingDevice = static_cast<MSDevice_Routing*>(getDevice(typeid(MSDevice_Routing)));
+        assert(routingDevice != 0);
+        savingsOk = routingDevice->sufficientSaving(previousCost, routeCost);
+        if (!savingsOk) {
+            std::string dummyMsg;
+            if (!hasValidRoute(dummyMsg, oldEdgesRemaining.begin(), oldEdgesRemaining.end(), true)) {
+                // the old route is prohibted (i.e. due to temporary permission changes)
+                savingsOk = true;
+            }
+        }
+    }
     //if (getID() == "43") std::cout << SIMTIME << " pCost=" << previousCost << " cost=" << routeCost
     //    << " onInit=" << onInit
     //        << " prevEdges=" << toString(oldEdgesRemaining)
     //        << " newEdges=" << toString(edges)
     //        << "\n";
-    replaceRouteEdges(edges, routeCost, savings, info, onInit);
+    if (savingsOk) {
+        replaceRouteEdges(edges, routeCost, savings, info, onInit);
+    }
     // this must be called even if the route could not be replaced
     if (onInit) {
         if (edges.empty()) {
@@ -943,6 +958,16 @@ MSBaseVehicle::getRoutePosition() const {
 }
 
 
+int
+MSBaseVehicle::getNumRemainingEdges() const {
+    if (myParameter->arrivalEdge >= 0) {
+        return myParameter->arrivalEdge - getRoutePosition() + 1;
+    } else {
+        return myRoute->size() - getRoutePosition();
+    }
+}
+
+
 void
 MSBaseVehicle::resetRoutePosition(int index, DepartLaneDefinition departLaneProcedure) {
     myCurrEdge = myRoute->begin() + index;
@@ -1024,9 +1049,15 @@ MSBaseVehicle::hasValidRoute(std::string& msg, ConstMSRoutePtr route) const {
         start = route->begin();
     }
     const bool checkJumps = route == myRoute;  // the edge iterators in the stops are invalid otherwise
-    MSRouteIterator last = route->end() - 1;
+    return hasValidRoute(msg, start, route->end(), checkJumps);
+}
+
+
+bool
+MSBaseVehicle::hasValidRoute(std::string& msg, MSRouteIterator start, MSRouteIterator last, bool checkJumps) const {
+    MSRouteIterator lastValid = last - 1;
     // check connectivity, first
-    for (MSRouteIterator e = start; e != last; ++e) {
+    for (MSRouteIterator e = start; e != lastValid; ++e) {
         const MSEdge& next = **(e + 1);
         if ((*e)->allowedLanes(next, myType->getVehicleClass()) == nullptr) {
             if (!checkJumps || !hasJump(e)) {
@@ -1038,7 +1069,6 @@ MSBaseVehicle::hasValidRoute(std::string& msg, ConstMSRoutePtr route) const {
             }
         }
     }
-    last = route->end();
     // check usable lanes, then
     for (MSRouteIterator e = start; e != last; ++e) {
         if ((*e)->prohibits(this)) {
@@ -2587,6 +2617,14 @@ MSBaseVehicle::removeTransportable(MSTransportable* t) {
     if (myContainerDevice != nullptr) {
         myContainerDevice->removeTransportable(t);
     }
+    if (myEnergyParams != nullptr) {
+        myEnergyParams->setTransportableMass(myEnergyParams->getTransportableMass() - t->getVehicleType().getMass());
+    }
+}
+
+
+void
+MSBaseVehicle::removeTransportableMass(MSTransportable* t) {
     if (myEnergyParams != nullptr) {
         myEnergyParams->setTransportableMass(myEnergyParams->getTransportableMass() - t->getVehicleType().getMass());
     }

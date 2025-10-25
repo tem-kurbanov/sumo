@@ -28,6 +28,7 @@ copy_test_path:input_routes.rou.xml.gz
 copy_test_path:input_routes2.rou.xml
 copy_test_path:input_flows.flows.xml
 copy_test_path:input_turns.xml
+copy_test_path:input_tazrel.xml
 copy_test_path:input_detectors.det.xml
 copy_test_path:input_stops.xml
 copy_test_path:input_stopinfos.xml
@@ -405,6 +406,7 @@ dualog:0.0101
 xmlstats:0.0101
 aggregatebattery:0.0101
 additional:0.0001
+tripinfos:0.0101
 
 [unordered_text]
 errors:ERROR:SCHEMA

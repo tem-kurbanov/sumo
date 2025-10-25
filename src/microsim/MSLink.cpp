@@ -355,6 +355,24 @@ MSLink::setRequestInformation(int index, bool hasFoes, bool isCont,
                 } else if (intersections2.size() > 1) {
                     std::sort(intersections2.begin(), intersections2.end());
                 }
+
+                // check for near-intersection (internal junctions for a side road which are only relevant when they have stranded vehicles))
+                if (!haveIntersection && foeLane->getLinkCont()[0]->getViaLane() != nullptr) {
+                    const Position waitPos = foeLane->getShape().back();
+                    const double dist = lane->getShape().distance2D(waitPos, true);
+                    if (dist != GeomHelper::INVALID_OFFSET && dist < lane->getWidth() / 2) {
+                        // risk of collision
+                        intersections1.clear();
+                        intersections2.clear();
+                        intersections1.push_back(lane->getShape().nearest_offset_to_point2D(waitPos));
+                        intersections2.push_back(foeLane->getShape().length());
+                        haveIntersection = true;
+#ifdef MSLink_DEBUG_CROSSING_POINTS_DETAILS
+                        std::cout << "    link=" << myIndex << " " << getDescription() << " almostIntersection with foeLane " << foeLane->getID() << " offset=" << intersections1.back() << "\n";
+#endif
+                    }
+                }
+
                 double conflictSize = foeLane->getWidth();
                 ConflictFlag flag = CONFLICT_NO_INTERSECTION;
                 if (haveIntersection) {
@@ -903,7 +921,20 @@ MSLink::opened(SUMOTime arrivalTime, double arrivalSpeed, double leaveSpeed, dou
             }
         }
     }
-    if ((havePriority() || lastWasContState(LINKSTATE_TL_GREEN_MAJOR)) && myState != LINKSTATE_ZIPPER) {
+#ifdef MSLink_DEBUG_OPENED
+    /*
+    if (gDebugFlag1) {
+        std::cout << SIMTIME << " isExitLinkAfterInternalJunction=" << isExitLinkAfterInternalJunction()
+            << " entryLink=" << getCorrespondingEntryLink()->getDescription()
+            << " entryState=" << getCorrespondingEntryLink()->getState()
+            << "\n";
+    }
+    */
+#endif
+    if ((havePriority()
+                || lastWasContState(LINKSTATE_TL_GREEN_MAJOR)
+                || (isExitLinkAfterInternalJunction() && getCorrespondingEntryLink()->getState() == LINKSTATE_TL_GREEN_MAJOR))
+            && myState != LINKSTATE_ZIPPER) {
         // priority usually means the link is open but there are exceptions:
         // zipper still needs to collect foes
         // sublane model could have detected a conflict
@@ -1278,6 +1309,9 @@ MSLink::isCont() const {
 
 bool
 MSLink::lastWasContMajor() const {
+    if (isExitLinkAfterInternalJunction()) {
+        return myInternalLaneBefore->getIncomingLanes()[0].viaLink->lastWasContMajor();
+    }
     if (myInternalLane == nullptr || myAmCont) {
         return false;
     } else {
@@ -1600,8 +1634,8 @@ MSLink::getLeaderInfo(const MSVehicle* ego, double dist, std::vector<const MSPer
             const bool ignoreIndirectBicycleTurn = pastTheCrossingPoint && foeIsBicycleTurn;
             const bool cannotIgnore = ((contLane && !ignoreIndirectBicycleTurn) || sameTarget || (sameSource && !MSGlobals::gComputeLC)) && ego != nullptr;
             const bool inTheWay = ((((!pastTheCrossingPoint && distToCrossing > 0) || (sameTarget && distToCrossing > leaderBackDist - leader->getLength()))
-                                    && enteredTheCrossingPoint
-                                    && (!foeExitLink->isInternalJunctionLink() || foeIsBicycleTurn))
+                                    && (enteredTheCrossingPoint || (sameSource && !enteredTheCrossingPoint && foeDistToCrossing < distToCrossing))
+                                    && (!foeExitLink->isInternalJunctionLink() || foeIsBicycleTurn || sameSource))
                                    || foeExitLink->getLaneBefore()->getNormalPredecessorLane() == myLane->getBidiLane());
             const bool isOpposite = leader->getLaneChangeModel().isOpposite();
             const auto avi = foeExitLink->getApproaching(leader);

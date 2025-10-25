@@ -25,6 +25,12 @@
 #include "GNEAdditional.h"
 
 // ===========================================================================
+// class declaration
+// ===========================================================================
+
+class GNEMoveElementShape;
+
+// ===========================================================================
 // class definitions
 // ===========================================================================
 
@@ -54,10 +60,19 @@ public:
     /// @brief GNETAZ Destructor
     ~GNETAZ();
 
-    /**@brief get move operation
-    * @note returned GNEMoveOperation can be nullptr
-    */
-    GNEMoveOperation* getMoveOperation();
+    /// @brief methods to retrieve the elements linked to this TAZ
+    /// @{
+
+    /// @brief get GNEMoveElement associated with this TAZ
+    GNEMoveElement* getMoveElement() const override;
+
+    /// @brief get parameters associated with this TAZ
+    Parameterised* getParameters() override;
+
+    /// @brief get parameters associated with this TAZ (constant)
+    const Parameterised* getParameters() const override;
+
+    /// @}
 
     /**@brief return index of a vertex of shape, or of a new vertex if position is over an shape's edge
      * @param pos position of new/existent vertex
@@ -65,9 +80,6 @@ public:
      * @return index of position vector
      */
     int getVertexIndex(Position pos, bool snapToGrid);
-
-    /// @brief remove geometry point in the clicked position
-    void removeGeometryPoint(const Position clickedPosition, GNEUndoList* undoList);
 
     /// @name members and functions relative to write additionals into XML
     /// @{
@@ -92,7 +104,7 @@ public:
     /// @{
 
     /// @brief check if draw move contour (red)
-    bool checkDrawMoveContour() const;
+    bool checkDrawMoveContour() const override;
 
     /// @}
 
@@ -100,7 +112,7 @@ public:
     /// @{
 
     /// @brief update pre-computed geometry information
-    void updateGeometry();
+    void updateGeometry() override;
 
     /// @brief Returns position of additional in view
     Position getPositionInView() const;
@@ -147,42 +159,45 @@ public:
      * @param[in] key The attribute key
      * @return string with the value associated to key
      */
-    std::string getAttribute(SumoXMLAttr key) const;
+    std::string getAttribute(SumoXMLAttr key) const override;
 
-    /* @brief method for getting the Attribute of an XML key in double format (to avoid unnecessary parse<double>(...) for certain attributes)
+    /* @brief method for getting the Attribute of an XML key in double format
      * @param[in] key The attribute key
      * @return double with the value associated to key
      */
-    double getAttributeDouble(SumoXMLAttr key) const;
+    double getAttributeDouble(SumoXMLAttr key) const override;
 
-    /* @brief method for getting the Attribute of an XML key in position format (to avoid unnecessary parse<position>(...) for certain attributes)
+    /* @brief method for getting the Attribute of an XML key in position format
      * @param[in] key The attribute key
-     * @return double with the value associated to key
+     * @return position with the value associated to key
      */
-    Position getAttributePosition(SumoXMLAttr key) const;
+    Position getAttributePosition(SumoXMLAttr key) const override;
 
-    /// @brief get parameters map
-    const Parameterised::Map& getACParametersMap() const;
+    /* @brief method for getting the Attribute of an XML key in positionVector format
+     * @param[in] key The attribute key
+     * @return positionVector with the value associated to key
+     */
+    PositionVector getAttributePositionVector(SumoXMLAttr key) const override;
 
     /* @brief method for setting the attribute and letting the object perform additional changes
      * @param[in] key The attribute key
      * @param[in] value The new value
      * @param[in] undoList The undoList on which to register changes
      */
-    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList);
+    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList) override;
 
     /* @brief method for checking if the key and their corresponding attribute are valid
      * @param[in] key The attribute key
      * @param[in] value The value associated to key key
      * @return true if the value is valid, false in other case
      */
-    bool isValid(SumoXMLAttr key, const std::string& value);
+    bool isValid(SumoXMLAttr key, const std::string& value) override;
 
     /// @brief get PopPup ID (Used in AC Hierarchy)
-    std::string getPopUpID() const;
+    std::string getPopUpID() const override;
 
     /// @brief get Hierarchy Name (Used in AC Hierarchy)
-    std::string getHierarchyName() const;
+    std::string getHierarchyName() const override;
 
     /// @}
 
@@ -190,8 +205,8 @@ public:
     void updateTAZStatistic();
 
 protected:
-    /// @brief TAZ center
-    Position myTAZCenter;
+    /// @brief move element shape
+    GNEMoveElementShape* myMoveElementShape = nullptr;
 
     /// @brief TAZ center contour
     GNEContour myTAZCenterContour;
@@ -225,13 +240,7 @@ private:
     double myAverageWeightSink = 0;
 
     /// @brief set attribute after validation
-    void setAttribute(SumoXMLAttr key, const std::string& value);
-
-    /// @brief set move shape
-    void setMoveShape(const GNEMoveResult& moveResult);
-
-    /// @brief commit move shape
-    void commitMoveShape(const GNEMoveResult& moveResult, GNEUndoList* undoList);
+    void setAttribute(SumoXMLAttr key, const std::string& value) override;
 
     /// @brief Invalidated copy constructor.
     GNETAZ(const GNETAZ&) = delete;

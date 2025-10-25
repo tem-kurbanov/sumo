@@ -18,11 +18,11 @@
 // A lane area vehicles can halt at (GNE version)
 /****************************************************************************/
 
+#include <netedit/changes/GNEChange_Attribute.h>
 #include <netedit/GNENet.h>
 #include <netedit/GNETagProperties.h>
-#include <netedit/changes/GNEChange_Attribute.h>
-#include <utils/options/OptionsCont.h>
 #include <utils/gui/div/GLHelper.h>
+#include <utils/options/OptionsCont.h>
 
 #include "GNEBusStop.h"
 
@@ -45,20 +45,20 @@ GNEBusStop::buildTrainStop(GNENet* net) {
 GNEBusStop*
 GNEBusStop::buildBusStop(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane,
                          const double startPos, const double endPos, const std::string& name, const std::vector<std::string>& lines,
-                         int personCapacity, double parkingLength, const RGBColor& color, bool friendlyPosition,
-                         const Parameterised::Map& parameters) {
+                         const int personCapacity, const double parkingLength, const RGBColor& color, const bool friendlyPosition,
+                         const double angle, const Parameterised::Map& parameters) {
     return new GNEBusStop(SUMO_TAG_BUS_STOP, id, net, filename, lane, startPos, endPos, name, lines,
-                          personCapacity, parkingLength, color, friendlyPosition, parameters);
+                          personCapacity, parkingLength, color, friendlyPosition, angle, parameters);
 }
 
 
 GNEBusStop*
 GNEBusStop::buildTrainStop(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane,
                            const double startPos, const double endPos, const std::string& name, const std::vector<std::string>& lines,
-                           int personCapacity, double parkingLength, const RGBColor& color, bool friendlyPosition,
-                           const Parameterised::Map& parameters) {
+                           const int personCapacity, const double parkingLength, const RGBColor& color, const bool friendlyPosition,
+                           const double angle, const Parameterised::Map& parameters) {
     return new GNEBusStop(SUMO_TAG_TRAIN_STOP, id, net, filename, lane, startPos, endPos, name, lines,
-                          personCapacity, parkingLength, color, friendlyPosition, parameters);
+                          personCapacity, parkingLength, color, friendlyPosition, angle, parameters);
 }
 
 
@@ -116,7 +116,7 @@ GNEBusStop::drawGL(const GUIVisualizationSettings& s) const {
         // Obtain exaggeration of the draw
         const double busStopExaggeration = getExaggeration(s);
         // check if draw moving geometry points
-        const bool movingGeometryPoints = drawMovingGeometryPoints(false);
+        const bool movingGeometryPoints = drawMovingGeometryPoints();
         // get width
         const double stopWidth = (myTagProperty->getTag() == SUMO_TAG_BUS_STOP) ? s.stoppingPlaceSettings.busStopWidth : s.stoppingPlaceSettings.trainStopWidth;
         // get detail level
@@ -157,10 +157,10 @@ GNEBusStop::drawGL(const GUIVisualizationSettings& s) const {
             // draw sign
             drawSign(s, d, busStopExaggeration, baseColor, signColor, (myTagProperty->getTag() == SUMO_TAG_BUS_STOP) ? "H" : "T");
             // draw geometry points
-            if (movingGeometryPoints && (myStartPosition != INVALID_DOUBLE)) {
+            if (movingGeometryPoints && (myStartPosOverLane != INVALID_DOUBLE)) {
                 drawLeftGeometryPoint(s, d, myAdditionalGeometry.getShape().front(), myAdditionalGeometry.getShapeRotations().front(), baseColor);
             }
-            if (movingGeometryPoints && (myEndPosition != INVALID_DOUBLE)) {
+            if (movingGeometryPoints && (myEndPosPosOverLane != INVALID_DOUBLE)) {
                 drawRightGeometryPoint(s, d, myAdditionalGeometry.getShape().back(), myAdditionalGeometry.getShapeRotations().back(), baseColor);
             }
             // pop layer matrix
@@ -202,7 +202,7 @@ GNEBusStop::getAttribute(SumoXMLAttr key) const {
         case SUMO_ATTR_PARKING_LENGTH:
             return toString(myParkingLength);
         default:
-            return getStoppingPlaceAttribute(this, key);
+            return getStoppingPlaceAttribute(key);
     }
 }
 
@@ -259,7 +259,7 @@ GNEBusStop::setAttribute(SumoXMLAttr key, const std::string& value) {
             myParkingLength = GNEAttributeCarrier::parse<double>(value);
             break;
         default:
-            setStoppingPlaceAttribute(this, key, value);
+            setStoppingPlaceAttribute(key, value);
             break;
     }
 }
@@ -272,9 +272,10 @@ GNEBusStop::GNEBusStop(SumoXMLTag tag, GNENet* net) :
 
 GNEBusStop::GNEBusStop(SumoXMLTag tag, const std::string& id, GNENet* net, const std::string& filename,
                        GNELane* lane, const double startPos, const double endPos, const std::string& name,
-                       const std::vector<std::string>& lines, int personCapacity, double parkingLength,
-                       const RGBColor& color, bool friendlyPosition, const Parameterised::Map& parameters) :
-    GNEStoppingPlace(id, net, filename, tag, lane, startPos, endPos, name, friendlyPosition, color, parameters),
+                       const std::vector<std::string>& lines, const int personCapacity, const double parkingLength,
+                       const RGBColor& color, const bool friendlyPosition, const double angle,
+                       const Parameterised::Map& parameters) :
+    GNEStoppingPlace(id, net, filename, tag, lane, startPos, endPos, name, friendlyPosition, color, angle, parameters),
     myLines(lines),
     myPersonCapacity(personCapacity),
     myParkingLength(parkingLength) {

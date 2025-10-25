@@ -520,7 +520,7 @@ def get_prob_fun(options, fringe_bonus, fringe_forbidden, max_length):
                 prob *= (angleDiff * (options.angle_weight - 1) + 1)
             else:
                 prob *= ((180 - angleDiff) * (options.angle_weight - 1) + 1)
-        prob *= options.typeFactors[edge.getType()]
+        prob *= options.typeFactors[edge.getRoutingType()]
 
         return prob
     return edge_probability
@@ -943,6 +943,7 @@ def createTrips(options, trip_generator, rerunFactor=None, skipValidation=False)
                                         print(exc, file=sys.stderr)
                             time += 1.0
             else:
+                # generate flows
                 try:
                     origins_destinations = [generate_origin_destination(
                         trip_generator, options) for _ in range(options.flows)]
@@ -957,6 +958,7 @@ def createTrips(options, trip_generator, rerunFactor=None, skipValidation=False)
                                 continue
                             origin, destination, intermediate = origins_destinations[j]
                             generate_one(j, departureTime, arrivalTime, period, origin, destination, intermediate, i)
+                            idx += 1
                 except Exception as exc:
                     print(exc, file=sys.stderr)
 
@@ -991,6 +993,8 @@ def createTrips(options, trip_generator, rerunFactor=None, skipValidation=False)
         duargs += ['--persontrip.walk-opposite-factor', str(options.walkoppositefactor)]
     if options.randomRoutingFactor != 1:
         duargs += ['--weights.random-factor', str(options.randomRoutingFactor)]
+    if options.flows > 0:
+        duargs += ['--keep-flows']
 
     options_to_forward = sumolib.options.get_prefixed_options(options)
     for router, routerargs in [('duarouter', duargs), ('marouter', maargs)]:

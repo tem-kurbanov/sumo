@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2025-09-03 13:21:23 by Eclipse SUMO sumo Version v1_24_0+0609-15168f51efc
+<!-- generated on 2025-10-09T13:47:59.916914+01:00 by Eclipse SUMO sumo v1_24_0+1295-8333438020a
 -->
 
 <sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
@@ -59,6 +59,9 @@
     <output>
         <!-- Include license info into every output file -->
         <write-license value="false" type="BOOL"/>
+
+        <!-- Write parsable metadata (configuration etc.) instead of comments -->
+        <write-metadata value="false" type="BOOL"/>
 
         <!-- Prefix which is applied to all output files. The special string &apos;TIME&apos; is replaced by the current time. -->
         <output-prefix value="" type="STR"/>
@@ -170,6 +173,9 @@
 
         <!-- List shape names that should be used to filter the FCD output -->
         <fcd-output.filter-shapes value="" type="STR[]"/>
+
+        <!-- Save fcd for persons and container to separate FILE -->
+        <person-fcd-output value="" synonymes="person-fcd" type="FILE"/>
 
         <!-- Restrict SSM device output to the edge selection from the given input file -->
         <device.ssm.filter-edges.input-file value="" type="FILE"/>
@@ -660,10 +666,10 @@
         <!-- Where are mode changes from car to walking allowed (possible values: &apos;parkingAreas&apos;, &apos;ptStops&apos;, &apos;allJunctions&apos; and combinations) -->
         <persontrip.transfer.car-walk value="parkingAreas" type="STR[]"/>
 
-        <!-- Where taxis can drop off customers (&apos;allJunctions, &apos;ptStops&apos;) -->
+        <!-- Where taxis can drop off customers (&apos;allJunctions, &apos;ptStops&apos;, &apos;parkingAreas&apos;) -->
         <persontrip.transfer.taxi-walk value="" type="STR[]"/>
 
-        <!-- Where taxis can pick up customers (&apos;allJunctions, &apos;ptStops&apos;) -->
+        <!-- Where taxis can pick up customers (&apos;allJunctions, &apos;ptStops&apos;, &apos;parkingAreas&apos;) -->
         <persontrip.transfer.walk-taxi value="" type="STR[]"/>
 
         <!-- When set, trips between the same origin and destination will share a taxi by default -->
@@ -704,6 +710,12 @@
 
         <!-- The interval for updating the edge weights -->
         <device.rerouting.adaptation-interval value="1" synonymes="device.routing.adaptation-interval" deprecated="device.routing.adaptation-interval" type="TIME"/>
+
+        <!-- Only reroute if the new route is faster than the current route by the given factor -->
+        <device.rerouting.threshold.factor value="1" type="FLOAT"/>
+
+        <!-- Only reroute if the new route is faster than the current route by the given TIME -->
+        <device.rerouting.threshold.constant value="0" type="TIME"/>
 
         <!-- Use zones (districts) as routing start- and endpoints -->
         <device.rerouting.with-taz value="false" synonymes="device.routing.with-taz with-taz" deprecated="device.routing.with-taz" type="BOOL"/>
@@ -1223,6 +1235,9 @@
 
         <!-- The period between successive calls to the dispatcher -->
         <device.taxi.dispatch-period value="60" type="TIME"/>
+
+        <!-- The time before aborting unreachable reservations -->
+        <device.taxi.dispatch-keep-unreachable value="3600" type="TIME"/>
 
         <!-- The behavior of idle taxis [stop|randomCircling|taxistand] -->
         <device.taxi.idle-algorithm value="stop" type="STR"/>

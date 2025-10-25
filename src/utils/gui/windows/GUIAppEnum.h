@@ -220,6 +220,8 @@ enum {
     MID_HOTKEY_CTRL_SHIFT_O_OPENNETCONVERTFILE,
     /// @brief save SUMOConfig (SUMO AND netedit)
     MID_HOTKEY_CTRL_SHIFT_S_SAVESUMOCONFIG,
+    /// @brief load only the network in sumo-gui/netedit
+    MID_HOTKEY_CTRL_SHIFT_T_OPEN_NET,
 
     /// @}
 
@@ -1528,6 +1530,10 @@ enum {
     MID_GNE_BUTTON_REMOVE,
     /// @brief config button (used in GNEFileDialog)
     MID_GNE_BUTTON_CONFIG,
+    /// @brief copy
+    MID_GNE_BUTTON_COPY,
+    /// @brief report
+    MID_GNE_BUTTON_REPORT,
 
     /// @}
 
@@ -1670,6 +1676,11 @@ enum {
     MID_DECALSTABLE_REMOVE,
 
     /// @}
+
+    /// @brief copy exception
+    MID_GNE_CRASHDIALOG_COPYEXCEPTION,
+    /// @brief copy trace
+    MID_GNE_CRASHDIALOG_COPYTRACE,
 
     /// @name other
     /// @{

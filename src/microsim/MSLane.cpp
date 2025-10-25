@@ -92,9 +92,7 @@
 
 //#define DEBUG_COND (false)
 //#define DEBUG_COND (true)
-//#define DEBUG_COND (getID() == "undefined")
 #define DEBUG_COND (isSelected())
-//#define DEBUG_COND2(obj) ((obj != 0 && (obj)->getID() == "disabled"))
 #define DEBUG_COND2(obj) ((obj != nullptr && (obj)->isSelected()))
 //#define DEBUG_COND (getID() == "ego")
 //#define DEBUG_COND2(obj) ((obj != 0 && (obj)->getID() == "ego"))
@@ -837,7 +835,8 @@ MSLane::checkFailure(const MSVehicle* aVehicle, double& speed, double& dist, con
             }
 
             if (errorMsg != "") {
-                WRITE_ERRORF(TL("Vehicle '%' will not be able to depart using the given velocity (%)!"), aVehicle->getID(), errorMsg);
+                WRITE_ERRORF(TL("Vehicle '%' will not be able to depart on lane '%' with speed % (%), time=%."),
+                             aVehicle->getID(), getID(), speed, errorMsg, time2string(SIMSTEP));
                 MSNet::getInstance()->getInsertionControl().descheduleDeparture(aVehicle);
             }
             return true;
@@ -931,6 +930,34 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
             }
         }
     }
+    // check leader vehicle first because it could have influenced the departSpeed (for departSpeed=avg)
+    // get the pointer to the vehicle next in front of the given position
+    const MSLeaderInfo leaders = getLastVehicleInformation(aVehicle, 0, pos);
+    //if (aVehicle->getID() == "disabled") std::cout << " leaders=" << leaders.toString() << "\n";
+    const double nspeed = safeInsertionSpeed(aVehicle, -pos, leaders, speed);
+    if (nspeed == INVALID_SPEED || checkFailure(aVehicle, speed, dist, nspeed, patchSpeed, "", InsertionCheck::LEADER_GAP)) {
+        // we may not drive with the given velocity - we crash into the leader
+#ifdef DEBUG_INSERTION
+        if (DEBUG_COND2(aVehicle) || DEBUG_COND) {
+            std::cout << SIMTIME << " isInsertionSuccess lane=" << getID()
+                      << " veh=" << aVehicle->getID()
+                      << " pos=" << pos
+                      << " posLat=" << posLat
+                      << " patchSpeed=" << patchSpeed
+                      << " speed=" << speed
+                      << " nspeed=" << nspeed
+                      << " nextLane=" << nextLane->getID()
+                      << " leaders=" << leaders.toString()
+                      << " failed (@700)!\n";
+        }
+#endif
+        return false;
+    }
+#ifdef DEBUG_INSERTION
+    if (DEBUG_COND2(aVehicle) || DEBUG_COND) {
+        std::cout << SIMTIME << " speed = " << speed << " nspeed = " << nspeed << " leaders=" << leaders.toString() << "\n";
+    }
+#endif
 
     const MSRoute& r = aVehicle->getRoute();
     MSRouteIterator ce = r.begin();
@@ -941,13 +968,14 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
     while ((seen < dist || (isRail && firstRailSignal == nullptr)) && ri != bestLaneConts.end()) {
         // get the next link used...
         std::vector<MSLink*>::const_iterator link = succLinkSec(*aVehicle, nRouteSuccs, *currentLane, bestLaneConts);
+        // get the next used lane (including internal)
         if (currentLane->isLinkEnd(link)) {
             if (&currentLane->getEdge() == r.getLastEdge()) {
                 // reached the end of the route
                 if (aVehicle->getParameter().arrivalSpeedProcedure == ArrivalSpeedDefinition::GIVEN) {
                     const double remaining = seen + aVehicle->getArrivalPos() - currentLane->getLength();
-                    const double nspeed = cfModel.freeSpeed(aVehicle, speed, remaining, aVehicle->getParameter().arrivalSpeed, true, MSCFModel::CalcReason::FUTURE);
-                    if (checkFailure(aVehicle, speed, dist, nspeed,
+                    const double fspeed = cfModel.freeSpeed(aVehicle, speed, remaining, aVehicle->getParameter().arrivalSpeed, true, MSCFModel::CalcReason::FUTURE);
+                    if (checkFailure(aVehicle, speed, dist, fspeed,
                                      patchSpeed, "arrival speed too low", InsertionCheck::ARRIVAL_SPEED)) {
                         // we may not drive with the given velocity - we cannot match the specified arrival speed
                         return false;
@@ -983,6 +1011,7 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
             firstRailSignal = *link;
             firstRailSignalDist = seen;
         }
+        nextLane = (*link)->getViaLaneOrLane();
         if (!(*link)->opened(arrivalTime, speed, speed, aVehicle->getVehicleType().getLength(), aVehicle->getImpatience(),
                              cfModel.getMaxDecel(), 0, posLat, nullptr, false, aVehicle)
                 || !(*link)->havePriority()) {
@@ -1033,7 +1062,9 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
                           << "\n";
             }
 #endif
-            break;
+            if (seen >= aVehicle->getVehicleType().getMinGap()) {
+                break;
+            }
         } else if (nextLane->isInternal()) {
             double tmp = 0;
             bool dummyReq = true;
@@ -1043,13 +1074,21 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
                 gDebugFlag1 = true;
             }
 #endif
-            aVehicle->checkLinkLeader(*link, nextLane, seen, nullptr, speed, tmp, tmp, dummyReq);
+            double nSpeed = speed;
+            aVehicle->checkLinkLeader(nextLane->getLinkCont()[0], nextLane, seen + nextLane->getLength(), nullptr, nSpeed, tmp, tmp, dummyReq);
 #ifdef DEBUG_INSERTION
             gDebugFlag1 = false;
 #endif
+            if (checkFailure(aVehicle, speed, dist, nSpeed, patchSpeed, "", InsertionCheck::LEADER_GAP)) {
+                // we may not drive with the given velocity - there is a junction leader
+#ifdef DEBUG_INSERTION
+                if (DEBUG_COND2(aVehicle) || DEBUG_COND) {
+                    std::cout << " linkLeader nSpeed=" << nSpeed << " failed (@1058)!\n";
+                }
+#endif
+                return false;
+            }
         }
-        // get the next used lane (including internal)
-        nextLane = (*link)->getViaLaneOrLane();
         // check how next lane affects the journey
         if (nextLane != nullptr) {
 
@@ -1082,12 +1121,12 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
             }
 
             // check leader on next lane
-            MSLeaderInfo leaders = nextLane->getLastVehicleInformation(aVehicle, 0, 0);
-            if (leaders.hasVehicles()) {
-                const double nspeed = nextLane->safeInsertionSpeed(aVehicle, seen, leaders, speed);
+            const MSLeaderInfo nextLeaders = nextLane->getLastVehicleInformation(aVehicle, 0, 0);
+            if (nextLeaders.hasVehicles()) {
+                const double nspeed = nextLane->safeInsertionSpeed(aVehicle, seen, nextLeaders, speed);
 #ifdef DEBUG_INSERTION
                 if (DEBUG_COND2(aVehicle) || DEBUG_COND) {
-                    std::cout << SIMTIME << " leader on lane '" << nextLane->getID() << "': " << leaders.toString() << " nspeed=" << nspeed << "\n";
+                    std::cout << SIMTIME << " leader on lane '" << nextLane->getID() << "': " << nextLeaders.toString() << " nspeed=" << nspeed << "\n";
                 }
 #endif
                 if (nspeed == INVALID_SPEED || checkFailure(aVehicle, speed, dist, nspeed, patchSpeed, "", InsertionCheck::LEADER_GAP)) {
@@ -1102,7 +1141,7 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
                                   << " speed=" << speed
                                   << " nspeed=" << nspeed
                                   << " nextLane=" << nextLane->getID()
-                                  << " lead=" << leaders.toString()
+                                  << " lead=" << nextLeaders.toString()
                                   << " failed (@641)!\n";
                     }
 #endif
@@ -1152,34 +1191,6 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
             }
         }
     }
-
-    // get the pointer to the vehicle next in front of the given position
-    MSLeaderInfo leaders = getLastVehicleInformation(aVehicle, 0, pos);
-    //if (aVehicle->getID() == "disabled") std::cout << " leaders=" << leaders.toString() << "\n";
-    const double nspeed = safeInsertionSpeed(aVehicle, -pos, leaders, speed);
-    if (nspeed == INVALID_SPEED || checkFailure(aVehicle, speed, dist, nspeed, patchSpeed, "", InsertionCheck::LEADER_GAP)) {
-        // we may not drive with the given velocity - we crash into the leader
-#ifdef DEBUG_INSERTION
-        if (DEBUG_COND2(aVehicle) || DEBUG_COND) {
-            std::cout << SIMTIME << " isInsertionSuccess lane=" << getID()
-                      << " veh=" << aVehicle->getID()
-                      << " pos=" << pos
-                      << " posLat=" << posLat
-                      << " patchSpeed=" << patchSpeed
-                      << " speed=" << speed
-                      << " nspeed=" << nspeed
-                      << " nextLane=" << nextLane->getID()
-                      << " leaders=" << leaders.toString()
-                      << " failed (@700)!\n";
-        }
-#endif
-        return false;
-    }
-#ifdef DEBUG_INSERTION
-    if (DEBUG_COND2(aVehicle) || DEBUG_COND) {
-        std::cout << SIMTIME << " speed = " << speed << " nspeed = " << nspeed << std::endl;
-    }
-#endif
 
     const MSLeaderDistanceInfo& followers = getFollowersOnConsecutive(aVehicle, aVehicle->getBackPositionOnLane(), false);
     for (int i = 0; i < followers.numSublanes(); ++i) {
@@ -1359,7 +1370,7 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
                   << "\n myVehicles=" << toString(myVehicles)
                   << " myPartial=" << toString(myPartialVehicles)
                   << " myManeuverReservations=" << toString(myManeuverReservations)
-                  << "\n leaders=" << leaders.toString()
+                  << "\n leaders=" << nextLeaders.toString()
                   << "\n success!\n";
     }
 #endif

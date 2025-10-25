@@ -256,9 +256,6 @@ public:
     /// @brief called when the command/FXCall save edgeTypes as is executed
     long onCmdSaveEdgeTypesAs(FXObject*, FXSelector, void*);
 
-    /// @brief called when the command/FXCall save edgeTypes as is updated
-    long onUpdSaveEdgeTypesAs(FXObject*, FXSelector, void*);
-
     /// @brief called when the command/FXCall open additionals is executed
     long onCmdOpenAdditionalElements(FXObject*, FXSelector, void*);
 
@@ -645,6 +642,12 @@ public:
 
     /// @brief load meanData elements
     void loadMeanDataElements();
+
+    /// @brief load traffic lights
+    void loadTrafficLights(const bool reloading);
+
+    /// @brief load meanData elements
+    void loadEdgeTypes(const bool reloading);
 
     /// @name functions related with test system
     /// @{

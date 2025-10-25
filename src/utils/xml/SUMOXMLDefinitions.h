@@ -57,6 +57,8 @@ enum SumoXMLTag {
     SUMO_TAG_JUNCTION,
     /// @brief begin/end of the description of an edge restriction
     SUMO_TAG_RESTRICTION,
+    /// @brief begin/end of the description of an edge preferences
+    SUMO_TAG_PREFERENCE,
     /// @brief edge-specific meso settings
     SUMO_TAG_MESO,
     /// @brief  A bus stop
@@ -258,6 +260,8 @@ enum SumoXMLTag {
     SUMO_TAG_NODE,
     /// @brief type (edge)
     SUMO_TAG_TYPE,
+    /// @brief types (edge)
+    SUMO_TAG_TYPES,
     /// @brief lane type
     SUMO_TAG_LANETYPE,
     /// @brief definition of a detector
@@ -313,6 +317,7 @@ enum SumoXMLTag {
     SUMO_TAG_VIEWSETTINGS,
     SUMO_TAG_VIEWSETTINGS_3D,
     SUMO_TAG_VIEWSETTINGS_DECAL,
+    SUMO_TAG_VIEWSETTINGS_TRACKER,
     SUMO_TAG_VIEWSETTINGS_LIGHT,
     SUMO_TAG_VIEWSETTINGS_SCHEME,
     SUMO_TAG_VIEWSETTINGS_OPENGL,
@@ -325,6 +330,7 @@ enum SumoXMLTag {
     SUMO_TAG_VIEWSETTINGS_ADDITIONALS,
     SUMO_TAG_VIEWSETTINGS_POIS,
     SUMO_TAG_VIEWSETTINGS_POLYS,
+    SUMO_TAG_VIEWSETTINGS_DATA,
     SUMO_TAG_VIEWSETTINGS_LEGEND,
     SUMO_TAG_VIEWSETTINGS_EVENT,
     SUMO_TAG_VIEWSETTINGS_EVENT_JAM_TIME,
@@ -966,6 +972,7 @@ enum SumoXMLAttr {
     SUMO_ATTR_REMOVE,
     SUMO_ATTR_LENGTH,
     SUMO_ATTR_BIDI,
+    SUMO_ATTR_ROUTINGTYPE,
     SUMO_ATTR_ID_BEFORE,
     SUMO_ATTR_ID_AFTER,
     SUMO_ATTR_CENTER,
@@ -2334,6 +2341,15 @@ enum class ReferencePosition {
     CENTER,
 };
 
+/// @enum mean data type
+enum class MeanDataType {
+    TRAFFIC,
+    EMISSIONS,
+    HARMONOISE,
+    AMITRAN,
+    DEFAULT,
+};
+
 /// @brief XML extension
 enum class XMLFileExtension {
     XML,
@@ -2601,6 +2617,9 @@ public:
     /// @brief reference positions (used creating certain elements in netedit)
     static StringBijection<ReferencePosition> ReferencePositions;
 
+    /// @brief reference positions (used creating certain elements in netedit)
+    static StringBijection<MeanDataType> MeanDataTypes;
+
     /// @brief XML file Extensions
     static StringBijection<XMLFileExtension> XMLFileExtensions;
 
@@ -2787,6 +2806,9 @@ private:
 
     /// @brief Reference position values
     static StringBijection<ReferencePosition>::Entry referencePositionValues[];
+
+    /// @brief Mean data type values
+    static StringBijection<MeanDataType>::Entry meanDataTypeValues[];
 
     /// @brief XML file extension values
     static StringBijection<XMLFileExtension>::Entry XMLFileExtensionValues[];

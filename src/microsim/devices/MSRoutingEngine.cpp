@@ -31,7 +31,9 @@
 #include <microsim/MSEventControl.h>
 #include <microsim/MSGlobals.h>
 #include <microsim/MSVehicleControl.h>
+#include <microsim/MSInsertionControl.h>
 #include <microsim/transportables/MSTransportable.h>
+#include <microsim/devices/MSDevice_Taxi.h>
 #include <utils/options/OptionsCont.h>
 #include <utils/common/WrappingCommand.h>
 #include <utils/common/StaticCommand.h>
@@ -212,6 +214,9 @@ MSRoutingEngine::getEffortExtra(const MSEdge* const e, const SUMOVehicle* const 
         const double relativeInversePrio = 1 - ((e->getPriority() - myMinEdgePriority) / myEdgePriorityRange);
         effort *= 1 + relativeInversePrio * myPriorityFactor;
     }
+    if (gRoutingPreferences) {
+        effort /= MSNet::getInstance()->getPreference(e->getRoutingType(), v->getVTypeParameter());
+    }
     return effort;
 }
 
@@ -384,7 +389,7 @@ MSRoutingEngine::initRouter(SUMOVehicle* vehicle) {
     const std::string routingAlgorithm = oc.getString("routing-algorithm");
     const bool hasPermissions = MSNet::getInstance()->hasPermissions();
     myBikeSpeeds = oc.getBool("device.rerouting.bike-speeds");
-    myEffortFunc = ((gWeightsRandomFactor != 1 || myPriorityFactor != 0 || myBikeSpeeds) ? &MSRoutingEngine::getEffortExtra : &MSRoutingEngine::getEffort);
+    myEffortFunc = ((gWeightsRandomFactor != 1 || myPriorityFactor != 0 || myBikeSpeeds || gRoutingPreferences) ? &MSRoutingEngine::getEffortExtra : &MSRoutingEngine::getEffort);
 
     SUMOAbstractRouter<MSEdge, SUMOVehicle>* router = nullptr;
     if (routingAlgorithm == "dijkstra") {
@@ -424,7 +429,7 @@ MSRoutingEngine::initRouter(SUMOVehicle* vehicle) {
     if (MSNet::getInstance()->hasBidiEdges()) {
         railRouter = new RailwayRouter<MSEdge, SUMOVehicle>(MSEdge::getAllEdges(), true, myEffortFunc, nullptr, false, true, false, oc.getFloat("railway.max-train-length"));
     }
-    const int carWalk = SUMOVehicleParserHelper::parseCarWalkTransfer(oc);
+    const int carWalk = SUMOVehicleParserHelper::parseCarWalkTransfer(oc, MSDevice_Taxi::hasFleet() || MSNet::getInstance()->getInsertionControl().hasTaxiFlow());
     const double taxiWait = STEPS2TIME(string2time(OptionsCont::getOptions().getString("persontrip.taxi.waiting-time")));
     MSTransportableRouter* transRouter = new MSTransportableRouter(MSNet::adaptIntermodalRouter, carWalk, taxiWait, routingAlgorithm, 0);
     myRouterProvider = new MSRouterProvider(router, nullptr, transRouter, railRouter);

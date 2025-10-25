@@ -98,6 +98,14 @@ public:
         return !myRestrictions.empty();
     }
 
+    /// @brief retriefe edge type specific routing preference
+    double getPreference(const std::string& routingType, const SUMOVTypeParameter& pars) const;
+
+    /// @brief add edge type specific routing preference
+    void addPreference(const std::string& routingType, SUMOVehicleClass svc, double prio); 
+    /// @brief add edge type specific routing preference
+    void addPreference(const std::string& routingType, std::string vType, double prio); 
+
     /// @name Insertion and retrieval of graph parts
     //@{
 
@@ -574,6 +582,10 @@ private:
     /// @brief The vehicle class specific speed restrictions
     std::map<std::string, std::map<SUMOVehicleClass, double> > myRestrictions;
 
+    /// @brief Preferences for routing
+    std::map<SUMOVehicleClass, std::map<std::string, double> > myVClassPreferences;
+    std::map<std::string, std::map<std::string, double> > myVTypePreferences;
+
     /// @brief The number of internal edges in the dictionary
     int myNumInternalEdges;
 
@@ -585,6 +597,9 @@ private:
 
     /// @brief whether to calculate routes for public transport
     const bool myDoPTRouting;
+
+    /// @brief whether to preserve flows
+    const bool myKeepFlows;
 
     /// @brief whether the network contains bidirectional railway edges
     bool myHasBidiEdges;

@@ -19,21 +19,28 @@
 /****************************************************************************/
 #pragma once
 #include <config.h>
-#include "GNENetworkElement.h"
 
 #include <netbuild/NBEdge.h>
+#include <utils/gui/div/GUIGeometry.h>
+
+#include "GNENetworkElement.h"
 
 // ===========================================================================
 // class declarations
 // ===========================================================================
-class GNEEdge;
 
+class GNEEdge;
+class GNEMoveElementConnection;
 
 // ===========================================================================
 // class definitions
 // ===========================================================================
 
 class GNEConnection : public GNENetworkElement {
+
+    /// @brief friend classses
+    friend class GNEMoveElementConnection;
+
 public:
     /** Constructor
      * @param[in] from The edge the vehicles leave
@@ -45,6 +52,20 @@ public:
     /// @brief Destructor
     ~GNEConnection();
 
+    /// @brief methods to retrieve the elements linked to this connection
+    /// @{
+
+    /// @brief get GNEMoveElement associated with this connection
+    GNEMoveElement* getMoveElement() const override;
+
+    /// @brief get parameters associated with this connection
+    Parameterised* getParameters() override;
+
+    /// @brief get parameters associated with this connection (constant)
+    const Parameterised* getParameters() const override;
+
+    /// @}
+
     /// @name Functions related with geometry of element
     /// @{
 
@@ -52,7 +73,7 @@ public:
     const PositionVector& getConnectionShape() const;
 
     /// @brief update pre-computed geometry information
-    void updateGeometry();
+    void updateGeometry() override;
 
     /// @brief Returns position of hierarchical element in view
     Position getPositionInView() const;
@@ -63,39 +84,28 @@ public:
     /// @{
 
     /// @brief check if draw from contour (green)
-    bool checkDrawFromContour() const;
+    bool checkDrawFromContour() const override;
 
     /// @brief check if draw from contour (magenta)
-    bool checkDrawToContour() const;
+    bool checkDrawToContour() const override;
 
     /// @brief check if draw related contour (cyan)
-    bool checkDrawRelatedContour() const;
+    bool checkDrawRelatedContour() const override;
 
     /// @brief check if draw over contour (orange)
-    bool checkDrawOverContour() const;
+    bool checkDrawOverContour() const override;
 
     /// @brief check if draw delete contour (pink/white)
-    bool checkDrawDeleteContour() const;
+    bool checkDrawDeleteContour() const override;
 
     /// @brief check if draw delete contour small (pink/white)
-    bool checkDrawDeleteContourSmall() const;
+    bool checkDrawDeleteContourSmall() const override;
 
     /// @brief check if draw select contour (blue)
-    bool checkDrawSelectContour() const;
+    bool checkDrawSelectContour() const override;
 
     /// @brief check if draw move contour (red)
-    bool checkDrawMoveContour() const;
-
-    /// @}
-
-    /// @name Functions related with move elements
-    /// @{
-
-    /// @brief get move operation for the given shapeOffset (can be nullptr)
-    GNEMoveOperation* getMoveOperation();
-
-    /// @brief remove geometry point in the clicked position
-    void removeGeometryPoint(const Position clickedPosition, GNEUndoList* undoList);
+    bool checkDrawMoveContour() const override;
 
     /// @}
 
@@ -116,6 +126,7 @@ public:
 
     /// @briefthe get lane index of the outgoing lane
     int getToLaneIndex() const;
+
     /// @brief get Edge::Connection
     NBEdge::Connection& getNBEdgeConnection() const;
 
@@ -182,27 +193,39 @@ public:
      * @param[in] key The attribute key
      * @return string with the value associated to key
      */
-    std::string getAttribute(SumoXMLAttr key) const;
+    std::string getAttribute(SumoXMLAttr key) const override;
 
-    /* @brief method for getting the Attribute of an XML key in PositionVector format
+    /* @brief method for getting the Attribute of an XML key in double format
+     * @param[in] key The attribute key
+     * @return double with the value associated to key
+     */
+    double getAttributeDouble(SumoXMLAttr key) const override;
+
+    /* @brief method for getting the Attribute of an XML key in position format
      * @param[in] key The attribute key
      * @return position with the value associated to key
      */
-    PositionVector getAttributePositionVector(SumoXMLAttr key) const;
+    Position getAttributePosition(SumoXMLAttr key) const override;
+
+    /* @brief method for getting the Attribute of an XML key in positionVector format
+     * @param[in] key The attribute key
+     * @return positionVector with the value associated to key
+     */
+    PositionVector getAttributePositionVector(SumoXMLAttr key) const override;
 
     /* @brief method for setting the attribute and letting the object perform additional changes
      * @param[in] key The attribute key
      * @param[in] value The new value
      * @param[in] undoList The undoList on which to register changes
      */
-    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList);
+    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList) override;
 
     /* @brief method for checking if the key and their conrrespond attribute are valids
      * @param[in] key The attribute key
      * @param[in] value The value associated to key key
      * @return true if the value is valid, false in other case
      */
-    bool isValid(SumoXMLAttr key, const std::string& value);
+    bool isValid(SumoXMLAttr key, const std::string& value) override;
 
     /* @brief method for check if the value for certain attribute is set
      * @param[in] key The attribute key
@@ -213,12 +236,13 @@ public:
      * @param[in] key The attribute key
      */
     bool isAttributeComputed(SumoXMLAttr key) const;
+
     /// @}
 
-    /// @brief get parameters map
-    const Parameterised::Map& getACParametersMap() const;
-
 protected:
+    /// @brief move element connection
+    GNEMoveElementConnection* myMoveElementConnection = nullptr;
+
     /// @brief Linkstate. @note cached because after 'undo' the connection needs to be drawn while the node logic (NBRequest) has not been recomputed
     LinkState myLinkState;
 
@@ -236,13 +260,7 @@ protected:
 
 private:
     /// @brief set attribute after validation
-    void setAttribute(SumoXMLAttr key, const std::string& value);
-
-    /// @brief set move shape
-    void setMoveShape(const GNEMoveResult& moveResult);
-
-    /// @brief commit move shape
-    void commitMoveShape(const GNEMoveResult& moveResult, GNEUndoList* undoList);
+    void setAttribute(SumoXMLAttr key, const std::string& value) override;
 
     /// @brief manage change of tlLinkindices
     void changeTLIndex(SumoXMLAttr key, int tlIndex, int tlIndex2, GNEUndoList* undoList);

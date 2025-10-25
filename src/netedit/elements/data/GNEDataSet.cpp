@@ -119,6 +119,24 @@ GNEDataSet::getHierarchicalElement() {
 }
 
 
+GNEMoveElement*
+GNEDataSet::getMoveElement() const {
+    return nullptr;
+}
+
+
+Parameterised*
+GNEDataSet::getParameters() {
+    return nullptr;
+}
+
+
+const Parameterised*
+GNEDataSet::getParameters() const {
+    return nullptr;
+}
+
+
 GUIGlObject*
 GNEDataSet::getGUIGlObject() {
     return nullptr;
@@ -346,14 +364,25 @@ GNEDataSet::getAttribute(SumoXMLAttr key) const {
         case SUMO_ATTR_ID:
             return myDataSetID;
         default:
-            return getCommonAttribute(this, key);
+            return getCommonAttribute(key);
     }
 }
 
 
 double
 GNEDataSet::getAttributeDouble(SumoXMLAttr key) const {
-    throw InvalidArgument(getTagStr() + " doesn't have a double attribute of type '" + toString(key) + "'");
+    return getCommonAttributeDouble(key);
+}
+
+
+Position
+GNEDataSet::getAttributePosition(SumoXMLAttr key) const {
+    return getCommonAttributePosition(key);
+}
+
+
+PositionVector GNEDataSet::getAttributePositionVector(SumoXMLAttr key) const {
+    return getCommonAttributePositionVector(key);
 }
 
 
@@ -380,7 +409,7 @@ GNEDataSet::isValid(SumoXMLAttr key, const std::string& value) {
                 return false;
             }
         default:
-            return isCommonValid(key, value);
+            return isCommonAttributeValid(key, value);
     }
 }
 
@@ -397,12 +426,6 @@ GNEDataSet::getHierarchyName() const {
 }
 
 
-const Parameterised::Map&
-GNEDataSet::getACParametersMap() const {
-    return getParametersMap();
-}
-
-
 void
 GNEDataSet::setAttribute(SumoXMLAttr key, const std::string& value) {
     switch (key) {
@@ -414,7 +437,7 @@ GNEDataSet::setAttribute(SumoXMLAttr key, const std::string& value) {
             }
             break;
         default:
-            setCommonAttribute(this, key, value);
+            setCommonAttribute(key, value);
             break;
     }
     // mark interval toolbar for update

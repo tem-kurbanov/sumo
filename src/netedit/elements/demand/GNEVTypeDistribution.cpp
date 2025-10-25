@@ -43,9 +43,20 @@ GNEVTypeDistribution::GNEVTypeDistribution(const std::string& ID, GNENet* net, c
 GNEVTypeDistribution::~GNEVTypeDistribution() {}
 
 
-GNEMoveOperation*
-GNEVTypeDistribution::getMoveOperation() {
-    // distributions cannot be moved
+GNEMoveElement*
+GNEVTypeDistribution::getMoveElement() const {
+    return nullptr;
+}
+
+
+Parameterised*
+GNEVTypeDistribution::getParameters() {
+    return nullptr;
+}
+
+
+const Parameterised*
+GNEVTypeDistribution::getParameters() const {
     return nullptr;
 }
 
@@ -276,7 +287,7 @@ GNEVTypeDistribution::isValid(SumoXMLAttr key, const std::string& value) {
                 return canParse<int>(value) && (parse<int>(value) >= 0);
             }
         default:
-            return isCommonValid(key, value);
+            return isCommonAttributeValid(key, value);
     }
 }
 
@@ -290,12 +301,6 @@ GNEVTypeDistribution::getPopUpID() const {
 std::string
 GNEVTypeDistribution::getHierarchyName() const {
     return getTagStr() + ": " + getAttribute(SUMO_ATTR_ID) ;
-}
-
-
-const Parameterised::Map&
-GNEVTypeDistribution::getACParametersMap() const {
-    throw InvalidArgument(getTagStr() + " doesn't have parameters");
 }
 
 // ===========================================================================
@@ -316,21 +321,9 @@ GNEVTypeDistribution::setAttribute(SumoXMLAttr key, const std::string& value) {
             }
             break;
         default:
-            setCommonAttribute(this, key, value);
+            setCommonAttribute(key, value);
             break;
     }
-}
-
-
-void
-GNEVTypeDistribution::setMoveShape(const GNEMoveResult& /*moveResult*/) {
-    // distributions cannot be moved
-}
-
-
-void
-GNEVTypeDistribution::commitMoveShape(const GNEMoveResult& /*moveResult*/, GNEUndoList* /*undoList*/) {
-    // distributions cannot be moved
 }
 
 /****************************************************************************/

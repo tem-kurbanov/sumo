@@ -57,6 +57,7 @@ repositories include a nightly build as well (called ***sumo-git***).
 - [openSUSE Leap 15.4 repository](https://download.opensuse.org/repositories/science:/dlr/15.4/)
 - [openSUSE Leap 15.5 repository](https://download.opensuse.org/repositories/science:/dlr/15.5/)
 - [openSUSE Leap 15.6 repository](https://download.opensuse.org/repositories/science:/dlr/15.6/)
+- [openSUSE Leap 16.0 repository](https://download.opensuse.org/repositories/science:/dlr/16.0/)
 - [openSUSE Tumbleweed repository](https://download.opensuse.org/repositories/science:/dlr/openSUSE_Tumbleweed/)
 - [Fedora 36 repository](https://download.opensuse.org/repositories/science:/dlr/Fedora_36/)
 - [Fedora 37 repository](https://download.opensuse.org/repositories/science:/dlr/Fedora_37/)
@@ -71,6 +72,7 @@ repositories include a nightly build as well (called ***sumo-git***).
 - [Debian 10 repository](https://download.opensuse.org/repositories/science:/dlr/Debian_10/)
 - [Debian 11 repository](https://download.opensuse.org/repositories/science:/dlr/Debian_11/)
 - [Debian 12 repository](https://download.opensuse.org/repositories/science:/dlr/Debian_12/)
+- [Debian 13 repository](https://download.opensuse.org/repositories/science:/dlr/Debian_13/)
 - [Debian Testing repository](https://download.opensuse.org/repositories/science:/dlr/Debian_Testing/)
 - [Debian Unstable repository](https://download.opensuse.org/repositories/science:/dlr/Debian_Unstable/)
 - [xUbuntu 16.04 repository](https://download.opensuse.org/repositories/science:/dlr/xUbuntu_16.04/)
@@ -199,6 +201,7 @@ see [the notes below](Downloads.md#note_on_licensing). The following packages ca
 <li>Windows zip with all extras (contains GPL code): <a class="no-arrow-link" href="https://sumo.dlr.de/daily/sumo-win64extra-git.zip">https://sumo.dlr.de/daily/sumo-win64extra-git.zip</a><?php getInfo("sumo-win64extra-git.zip","d",true);?></li>
 <li>Windows 64-bit binaries of the SUMO game: <a class="no-arrow-link" href="https://sumo.dlr.de/daily/sumo-game-win64-git.zip">https://sumo.dlr.de/daily/sumo-game-win64-git.zip</a><?php getInfo("sumo-game-win64-git.zip","d",true);?></li>
 <li>Windows 64-bit debug version: <a class="no-arrow-link" href="https://sumo.dlr.de/daily/sumo-win64Debug-git.zip">https://sumo.dlr.de/daily/sumo-win64Debug-git.zip</a><?php getInfo("sumo-win64Debug-git.zip","d",true);?></li>
+<li>macOS pkg installer: <a class="no-arrow-link" href="https://sumo.dlr.de/daily/sumo-git.pkg">sumo-git.pkg</a><?php getInfo("sumo-git.pkg","r",false);?></li>
 </ul>
 
 The nightly builds are also available as [Python wheels](https://sumo.dlr.de/daily/wheels/).

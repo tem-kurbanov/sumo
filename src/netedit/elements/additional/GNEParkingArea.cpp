@@ -18,12 +18,11 @@
 // A lane area vehicles can park at (GNE version)
 /****************************************************************************/
 
+#include <netedit/changes/GNEChange_Attribute.h>
 #include <netedit/GNENet.h>
 #include <netedit/GNETagProperties.h>
-#include <netedit/changes/GNEChange_Attribute.h>
 #include <utils/gui/div/GLHelper.h>
 #include <utils/options/OptionsCont.h>
-#include <utils/vehicle/SUMORouteHandler.h>
 
 #include "GNEParkingArea.h"
 
@@ -41,13 +40,12 @@ GNEParkingArea::GNEParkingArea(const std::string& id, GNENet* net, const std::st
                                const bool friendlyPosition, const int roadSideCapacity, const bool onRoad, const double width,
                                const double length, const double angle, const bool lefthand, const Parameterised::Map& parameters) :
     GNEStoppingPlace(id, net, filename, SUMO_TAG_PARKING_AREA, lane, startPos,
-                     endPos, name, friendlyPosition, RGBColor::INVISIBLE, parameters),
+                     endPos, name, friendlyPosition, RGBColor::INVISIBLE, angle, parameters),
     myDepartPos(departPos),
     myRoadSideCapacity(roadSideCapacity),
     myOnRoad(onRoad),
     myWidth(width),
     myLength(length),
-    myAngle(angle),
     myLefthand(lefthand),
     myAcceptedBadges(badges) {
     // update centering boundary without updating grid
@@ -75,9 +73,6 @@ GNEParkingArea::writeAdditional(OutputDevice& device) const {
     }
     if (myLength != myTagProperty->getDefaultDoubleValue(SUMO_ATTR_LENGTH)) {
         device.writeAttr(SUMO_ATTR_LENGTH, myLength);
-    }
-    if (myAngle != myTagProperty->getDefaultDoubleValue(SUMO_ATTR_ANGLE)) {
-        device.writeAttr(SUMO_ATTR_ANGLE, myAngle);
     }
     if (myDepartPos != myTagProperty->getDefaultStringValue(SUMO_ATTR_DEPARTPOS)) {
         device.writeAttr(SUMO_ATTR_DEPARTPOS, myDepartPos);
@@ -137,7 +132,7 @@ GNEParkingArea::drawGL(const GUIVisualizationSettings& s) const {
         // Obtain exaggeration of the draw
         const double parkingAreaExaggeration = getExaggeration(s);
         // check if draw moving geometry points
-        const bool movingGeometryPoints = drawMovingGeometryPoints(false);
+        const bool movingGeometryPoints = drawMovingGeometryPoints();
         // get detail level
         const auto d = s.getDetailLevel(parkingAreaExaggeration);
         // draw geometry only if we'rent in drawForObjectUnderCursor mode
@@ -176,10 +171,10 @@ GNEParkingArea::drawGL(const GUIVisualizationSettings& s) const {
                 }
             }
             // draw geometry points
-            if (movingGeometryPoints && (myStartPosition != INVALID_DOUBLE)) {
+            if (movingGeometryPoints && (myStartPosOverLane != INVALID_DOUBLE)) {
                 drawLeftGeometryPoint(s, d, myAdditionalGeometry.getShape().front(), myAdditionalGeometry.getShapeRotations().front(), baseColor);
             }
-            if (movingGeometryPoints && (myEndPosition != INVALID_DOUBLE)) {
+            if (movingGeometryPoints && (myEndPosPosOverLane != INVALID_DOUBLE)) {
                 drawRightGeometryPoint(s, d, myAdditionalGeometry.getShape().back(), myAdditionalGeometry.getShapeRotations().back(), baseColor);
             }
             // pop layer matrix
@@ -222,12 +217,10 @@ GNEParkingArea::getAttribute(SumoXMLAttr key) const {
             return toString(myWidth);
         case SUMO_ATTR_LENGTH:
             return toString(myLength);
-        case SUMO_ATTR_ANGLE:
-            return toString(myAngle);
         case SUMO_ATTR_LEFTHAND:
             return toString(myLefthand);
         default:
-            return getStoppingPlaceAttribute(this, key);
+            return getStoppingPlaceAttribute(key);
     }
 }
 
@@ -242,8 +235,6 @@ GNEParkingArea::getAttributeDouble(SumoXMLAttr key) const {
             const double spaceDim = myRoadSideCapacity > 0 ? (getAttributeDouble(SUMO_ATTR_ENDPOS) - getAttributeDouble(SUMO_ATTR_STARTPOS)) / myRoadSideCapacity * getParentLanes().front()->getLengthGeometryFactor() : 7.5;
             return (myLength > 0) ? myLength : spaceDim;
         }
-        case SUMO_ATTR_ANGLE:
-            return myAngle;
         default:
             return getStoppingPlaceAttributeDouble(key);
     }
@@ -259,7 +250,6 @@ GNEParkingArea::setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoL
         case SUMO_ATTR_ONROAD:
         case SUMO_ATTR_WIDTH:
         case SUMO_ATTR_LENGTH:
-        case SUMO_ATTR_ANGLE:
         case SUMO_ATTR_LEFTHAND:
             GNEChange_Attribute::changeAttribute(this, key, value, undoList);
             break;
@@ -305,8 +295,6 @@ GNEParkingArea::isValid(SumoXMLAttr key, const std::string& value) {
             } else {
                 return canParse<double>(value) && (parse<double>(value) > 0);
             }
-        case SUMO_ATTR_ANGLE:
-            return canParse<double>(value);
         case SUMO_ATTR_LEFTHAND:
             return canParse<bool>(value);
         default:
@@ -374,9 +362,6 @@ GNEParkingArea::setAttribute(SumoXMLAttr key, const std::string& value) {
                 space->updateGeometry();
             }
             break;
-        case SUMO_ATTR_ANGLE:
-            myAngle = parse<double>(value);
-            break;
         case SUMO_ATTR_LEFTHAND:
             myLefthand = parse<bool>(value);
             if (!isTemplate()) {
@@ -384,7 +369,7 @@ GNEParkingArea::setAttribute(SumoXMLAttr key, const std::string& value) {
             }
             break;
         default:
-            setStoppingPlaceAttribute(this, key, value);
+            setStoppingPlaceAttribute(key, value);
             break;
     }
 }

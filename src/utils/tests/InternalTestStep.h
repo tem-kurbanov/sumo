@@ -20,6 +20,7 @@
 #pragma once
 #include <config.h>
 
+#include <netedit/dialogs/GNEDialogEnum.h>
 #include <utils/foxtools/fxheader.h>
 
 #include "InternalTest.h"
@@ -41,7 +42,6 @@ public:
         TLS_PHASES,     // send signal to TLS Phases module (used for TLS Phases)
         TLS_PHASETABLE, // send signal to TLSTable (used for TLS Phases)
         DIALOG,         // send signal to dialog (used for modal dialogs)
-        COLOR,          // send signal to color dialog (temporal)
     };
 
     /// @brief dialog arguments, used for certain modal dialogs that can not be edited using tab
@@ -49,50 +49,51 @@ public:
 
     public:
         /// @name basic actions
-        enum class BasicAction {
+        enum class Action {
             ACCEPT,     // press accept button
             CANCEL,     // press cancel button
             RESET,      // press reset button
             ABORT,      // abort dialog
+            CUSTOM,     // custom action
             NONE,       // no action
         };
 
-        /// @name basic actions
-        enum class ExtendedAction {
-            CUSTOM,     // custom extended action
-            NONE        // no extended action
-        };
+        /// @brief constructor for basic actions
+        DialogArgument(DialogType type, Action action);
 
         /// @brief constructor for basic actions
-        DialogArgument(BasicAction basicAction);
+        DialogArgument(DialogType type, const std::string& customAction);
 
-        /// @brief constructor for basic actions
-        DialogArgument(ExtendedAction extendedAction, const std::string& customAction);
-
-        /// @brief constructor for custom actions
-        DialogArgument(const std::string& customAction);
+        /// @brief constructor for basic actions and index
+        DialogArgument(DialogType type, const std::string& customAction, const int index);
 
         /// @brief constructor for custom actions and prefix to remove in the action
-        DialogArgument(const std::string& prefixToRemove, const std::string& customAction);
+        DialogArgument(DialogType type, const std::string& prefixToRemove, const std::string& customAction);
+
+        /// @brief get type
+        DialogType getType() const;
 
         /// @brief get basic action
-        BasicAction getBasicAction() const;
-
-        /// @brief get extended action
-        ExtendedAction getExtendedAction() const;
+        Action getAction() const;
 
         /// @brief get custom action
         const std::string& getCustomAction() const;
 
-    protected:
-        /// @brief basic action
-        BasicAction myBasicAction = BasicAction::NONE;
+        /// @brief get index
+        int getIndex() const;
 
-        /// @brief extended action
-        ExtendedAction myExtendedAction = ExtendedAction::NONE;
+    protected:
+        /// @brief dialog type
+        DialogType myType = DialogType::DEFAULT;
+
+        /// @brief basic action
+        Action myAction = Action::NONE;
 
         /// @brief action to be carried out in the dialog
         std::string myCustomAction;
+
+        /// @brief index
+        int myIndex = 0;
 
     private:
         /// @brief invalidated default constructor
@@ -249,6 +250,9 @@ private:
     /// @brief process moveElement function
     void moveElement() const;
 
+    /// @brief process focusOnFrame function
+    void focusOnFrame() const;
+
     /// @brief process typeKey function
     void typeKey() const;
 
@@ -398,6 +402,12 @@ private:
 
     /// @brief process reload file function
     void reloadFile();
+
+    /// @brief process select edge type function
+    void selectEdgeType();
+
+    /// @brief process create new edge type function
+    void createNewEdgeType();
 
     /// @brief process overwriting accept function
     void overwritingAccept();

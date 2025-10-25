@@ -18,11 +18,11 @@
 # imports
 import time
 import pyautogui
-from ..constants import DELAY_RELOAD, TEXTTEST_SANDBOX
+from ..constants import DELAY_RELOAD
 from ..enums.attributesEnum import attrs
 from ..enums.viewPositions import positions
-from ..general.functions import typeTwoKeys, waitQuestion
-from ..input.keyboard import typeKey, typeTwoKeys, typeThreeKeys, updateText
+from ..general.functions import waitQuestion
+from ..input.keyboard import typeKey, typeTwoKeys
 from ..input.mouse import moveMouse
 
 
@@ -103,6 +103,20 @@ def reloadFile(referencePosition, type: str, multiple: bool):
             typeKey('down')
         typeKey('space')
         for _ in range(attrs.toolbar.file.neteditConfig.reload):
+            typeKey('down')
+        typeKey('space')
+    elif (type == "trafficLights"):
+        for _ in range(attrs.toolbar.file.trafficLights.menu):
+            typeKey('down')
+        typeKey('space')
+        for _ in range(attrs.toolbar.file.trafficLights.reload):
+            typeKey('down')
+        typeKey('space')
+    elif (type == "edgeTypes"):
+        for _ in range(attrs.toolbar.file.edgeTypes.menu):
+            typeKey('down')
+        typeKey('space')
+        for _ in range(attrs.toolbar.file.edgeTypes.reload):
             typeKey('down')
         typeKey('space')
     elif (type == "additional"):

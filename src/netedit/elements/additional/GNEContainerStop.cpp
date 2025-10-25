@@ -18,12 +18,11 @@
 // A lane area vehicles can halt at (GNE version)
 /****************************************************************************/
 
+#include <netedit/changes/GNEChange_Attribute.h>
 #include <netedit/GNENet.h>
 #include <netedit/GNETagProperties.h>
-#include <netedit/changes/GNEChange_Attribute.h>
 #include <utils/gui/div/GLHelper.h>
 #include <utils/options/OptionsCont.h>
-#include <utils/vehicle/SUMORouteHandler.h>
 
 #include "GNEContainerStop.h"
 
@@ -37,9 +36,9 @@ GNEContainerStop::GNEContainerStop(GNENet* net) :
 
 
 GNEContainerStop::GNEContainerStop(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane, const double startPos, const double endPos,
-                                   const std::string& name, const std::vector<std::string>& lines, int containerCapacity, double parkingLength, const RGBColor& color,
-                                   bool friendlyPosition, const Parameterised::Map& parameters) :
-    GNEStoppingPlace(id, net, filename, SUMO_TAG_CONTAINER_STOP, lane, startPos, endPos, name, friendlyPosition, color, parameters),
+                                   const std::string& name, const std::vector<std::string>& lines, const int containerCapacity, const double parkingLength,
+                                   const RGBColor& color, const bool friendlyPosition, const double angle, const Parameterised::Map& parameters) :
+    GNEStoppingPlace(id, net, filename, SUMO_TAG_CONTAINER_STOP, lane, startPos, endPos, name, friendlyPosition, color, angle, parameters),
     myLines(lines),
     myContainerCapacity(containerCapacity),
     myParkingLength(parkingLength) {
@@ -54,20 +53,9 @@ GNEContainerStop::~GNEContainerStop() {}
 void
 GNEContainerStop::writeAdditional(OutputDevice& device) const {
     device.openTag(getTagProperty()->getTag());
-    device.writeAttr(SUMO_ATTR_ID, getID());
-    if (!myAdditionalName.empty()) {
-        device.writeAttr(SUMO_ATTR_NAME, StringUtils::escapeXML(myAdditionalName));
-    }
-    device.writeAttr(SUMO_ATTR_LANE, getParentLanes().front()->getID());
-    if (myStartPosition != INVALID_DOUBLE) {
-        device.writeAttr(SUMO_ATTR_STARTPOS, myStartPosition);
-    }
-    if (myEndPosition != INVALID_DOUBLE) {
-        device.writeAttr(SUMO_ATTR_ENDPOS, myEndPosition);
-    }
-    if (myFriendlyPosition) {
-        device.writeAttr(SUMO_ATTR_FRIENDLY_POS, myFriendlyPosition);
-    }
+    // write common attributes
+    writeStoppingPlaceAttributes(device);
+    // write specific attributes
     if (getAttribute(SUMO_ATTR_LINES) != myTagProperty->getDefaultStringValue(SUMO_ATTR_LINES)) {
         device.writeAttr(SUMO_ATTR_LINES, toString(myLines));
     }
@@ -77,8 +65,9 @@ GNEContainerStop::writeAdditional(OutputDevice& device) const {
     if (myParkingLength != myTagProperty->getDefaultDoubleValue(SUMO_ATTR_PARKING_LENGTH)) {
         device.writeAttr(SUMO_ATTR_PARKING_LENGTH, myParkingLength);
     }
-    if (getAttribute(SUMO_ATTR_COLOR).size() > 0) {
-        device.writeAttr(SUMO_ATTR_COLOR, myColor);
+    // write all access
+    for (const auto& access : getChildAdditionals()) {
+        access->writeAdditional(device);
     }
     // write parameters (Always after children to avoid problems with additionals.xsd)
     writeParams(device);
@@ -111,7 +100,7 @@ GNEContainerStop::drawGL(const GUIVisualizationSettings& s) const {
         // Obtain exaggeration of the draw
         const double containerStopExaggeration = getExaggeration(s);
         // check if draw moving geometry points
-        const bool movingGeometryPoints = drawMovingGeometryPoints(false);
+        const bool movingGeometryPoints = drawMovingGeometryPoints();
         // get detail level
         const auto d = s.getDetailLevel(containerStopExaggeration);
         // draw geometry only if we'rent in drawForObjectUnderCursor mode
@@ -147,10 +136,10 @@ GNEContainerStop::drawGL(const GUIVisualizationSettings& s) const {
             // draw sign
             drawSign(s, d, containerStopExaggeration, baseColor, signColor, "C");
             // draw geometry points
-            if (movingGeometryPoints && (myStartPosition != INVALID_DOUBLE)) {
+            if (movingGeometryPoints && (myStartPosOverLane != INVALID_DOUBLE)) {
                 drawLeftGeometryPoint(s, d, myAdditionalGeometry.getShape().front(), myAdditionalGeometry.getShapeRotations().front(), baseColor);
             }
-            if (movingGeometryPoints && (myEndPosition != INVALID_DOUBLE)) {
+            if (movingGeometryPoints && (myEndPosPosOverLane != INVALID_DOUBLE)) {
                 drawRightGeometryPoint(s, d, myAdditionalGeometry.getShape().back(), myAdditionalGeometry.getShapeRotations().back(), baseColor);
             }
             // pop layer matrix
@@ -189,7 +178,7 @@ GNEContainerStop::getAttribute(SumoXMLAttr key) const {
         case SUMO_ATTR_PARKING_LENGTH:
             return toString(myParkingLength);
         default:
-            return getStoppingPlaceAttribute(this, key);
+            return getStoppingPlaceAttribute(key);
     }
 }
 
@@ -250,7 +239,7 @@ GNEContainerStop::setAttribute(SumoXMLAttr key, const std::string& value) {
             }
             break;
         default:
-            setStoppingPlaceAttribute(this, key, value);
+            setStoppingPlaceAttribute(key, value);
             break;
     }
 }

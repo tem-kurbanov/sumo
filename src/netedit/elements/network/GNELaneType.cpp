@@ -19,7 +19,6 @@
 /****************************************************************************/
 
 #include <netedit/GNENet.h>
-#include <netedit/GNEViewNet.h>
 #include <netedit/GNEViewParent.h>
 #include <netedit/frames/GNEAttributesEditor.h>
 #include <netedit/frames/network/GNECreateEdgeFrame.h>
@@ -46,6 +45,24 @@ GNELaneType::GNELaneType(GNEEdgeType* edgeTypeParent, const NBTypeCont::LaneType
 
 
 GNELaneType::~GNELaneType() {
+}
+
+
+GNEMoveElement*
+GNELaneType::getMoveElement() const {
+    return nullptr;
+}
+
+
+Parameterised*
+GNELaneType::getParameters() {
+    return this;
+}
+
+
+const Parameterised*
+GNELaneType::getParameters() const {
+    return this;
 }
 
 
@@ -216,14 +233,26 @@ GNELaneType::getAttribute(SumoXMLAttr key) const {
                 return toString(width);
             }
         default:
-            return getCommonAttribute(this, key);
+            return getCommonAttribute(key);
     }
+}
+
+
+double
+GNELaneType::getAttributeDouble(SumoXMLAttr key) const {
+    return getCommonAttributeDouble(key);
+}
+
+
+Position
+GNELaneType::getAttributePosition(SumoXMLAttr key) const {
+    return getCommonAttributePosition(key);
 }
 
 
 PositionVector
 GNELaneType::getAttributePositionVector(SumoXMLAttr key) const {
-    throw InvalidArgument(getTagStr() + " doesn't have an attribute of type '" + toString(key) + "'");
+    return getCommonAttributePositionVector(key);
 }
 
 
@@ -254,14 +283,8 @@ GNELaneType::isValid(SumoXMLAttr key, const std::string& value) {
                 return canParse<double>(value);
             }
         default:
-            return isCommonValid(key, value);
+            return isCommonAttributeValid(key, value);
     }
-}
-
-
-const Parameterised::Map&
-GNELaneType::getACParametersMap() const {
-    return getParametersMap();
 }
 
 // ===========================================================================
@@ -320,25 +343,13 @@ GNELaneType::setAttribute(SumoXMLAttr key, const std::string& value) {
             }
             break;
         default:
-            setCommonAttribute(this, key, value);
+            setCommonAttribute(key, value);
             break;
     }
     // update edge selector
     if (myNet->getViewNet()->getViewParent()->getCreateEdgeFrame()->shown()) {
         myNet->getViewNet()->getViewParent()->getCreateEdgeFrame()->getLaneTypeAttributes()->refreshAttributesEditor();
     }
-}
-
-
-void
-GNELaneType::setMoveShape(const GNEMoveResult& /*moveResult*/) {
-    // nothing to do
-}
-
-
-void
-GNELaneType::commitMoveShape(const GNEMoveResult& /*moveResult*/, GNEUndoList* /*undoList*/) {
-    // nothing to do
 }
 
 /****************************************************************************/

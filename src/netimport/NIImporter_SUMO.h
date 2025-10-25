@@ -264,6 +264,8 @@ private:
         std::string streetName;
         /// @brief This edge's type
         std::string type;
+        /// @brief This edge's routing type
+        std::string routingType;
         /// @brief This edge's function
         SumoXMLEdgeFunc func;
         /// @brief The node this edge starts at
@@ -338,8 +340,6 @@ private:
      */
     struct JunctionAttrs {
         NBNode* node;
-        // @the list of internal lanes corresponding to each link
-        std::vector<std::string> intLanes;
         // @brief the complete response definition for all links
         std::vector<std::string> response;
     };

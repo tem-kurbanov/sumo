@@ -78,6 +78,8 @@ RONet::RONet() :
                     && OptionsCont::getOptions().getBool("keep-vtype-distributions")),
     myDoPTRouting(!OptionsCont::getOptions().exists("ptline-routing")
                   || OptionsCont::getOptions().getBool("ptline-routing")),
+    myKeepFlows(OptionsCont::getOptions().exists("keep-flows")
+                  && OptionsCont::getOptions().getBool("keep-flows")),
     myHasBidiEdges(false) {
     if (myInstance != nullptr) {
         throw ProcessError(TL("A network was already constructed."));
@@ -144,6 +146,51 @@ void
 RONet::addRestriction(const std::string& id, const SUMOVehicleClass svc, const double speed) {
     myRestrictions[id][svc] = speed;
 }
+
+
+double
+RONet::getPreference(const std::string& routingType, const SUMOVTypeParameter& pars) const {
+    if (gRoutingPreferences) {
+        auto it = myVTypePreferences.find(pars.id);
+        if (it != myVTypePreferences.end()) {
+            auto it2 = it->second.find(routingType);
+            if (it2 != it->second.end()) {
+                return it2->second;
+            }
+        }
+        auto it3 = myVClassPreferences.find(pars.vehicleClass);
+        if (it3 != myVClassPreferences.end()) {
+            auto it4 = it3->second.find(routingType);
+            if (it4 != it3->second.end()) {
+                return it4->second;
+            }
+        }
+        // fallback to generel preferences
+        it = myVTypePreferences.find("");
+        if (it != myVTypePreferences.end()) {
+            auto it2 = it->second.find(routingType);
+            if (it2 != it->second.end()) {
+                return it2->second;
+            }
+        }
+    }
+    return 1;
+}
+
+
+void
+RONet::addPreference(const std::string& routingType, SUMOVehicleClass svc, double prio) {
+    myVClassPreferences[svc][routingType] = prio;
+    gRoutingPreferences = true;
+}
+
+
+void
+RONet::addPreference(const std::string& routingType, std::string vType, double prio) {
+    myVTypePreferences[vType][routingType] = prio;
+    gRoutingPreferences = true;
+}
+
 
 
 const std::map<SUMOVehicleClass, double>*
@@ -226,8 +273,8 @@ RONet::addJunctionTaz(ROAbstractEdgeBuilder& eb) {
         const std::string sourceID = tazID + "-source";
         const std::string sinkID = tazID + "-sink";
         // sink must be added before source
-        ROEdge* sink = eb.buildEdge(sinkID, nullptr, nullptr, 0, "");
-        ROEdge* source = eb.buildEdge(sourceID, nullptr, nullptr, 0, "");
+        ROEdge* sink = eb.buildEdge(sinkID, nullptr, nullptr, 0, "", "");
+        ROEdge* source = eb.buildEdge(sourceID, nullptr, nullptr, 0, "", "");
         sink->setOtherTazConnector(source);
         source->setOtherTazConnector(sink);
         if (!addDistrict(tazID, source, sink)) {
@@ -541,7 +588,24 @@ RONet::checkFlows(SUMOTime time, MsgHandler* errorHandler) {
         if (pars->line != "" && !myDoPTRouting) {
             continue;
         }
-        if (pars->repetitionProbability > 0) {
+        if (myKeepFlows) {
+            if (pars->repetitionsDone < pars->repetitionNumber) {
+                // each each flow only once
+                pars->repetitionsDone = pars->repetitionNumber;
+                const SUMOVTypeParameter* type = getVehicleTypeSecure(pars->vtypeid);
+                if (type == nullptr) {
+                    type = getVehicleTypeSecure(DEFAULT_VTYPE_ID);
+                } else {
+                    auto dist = getVTypeDistribution(pars->vtypeid);
+                    if (dist != nullptr) {
+                        WRITE_WARNINGF("Keeping flow '%' with a vTypeDistribution can lead to invalid routes if the distribution contains different vClasses", pars->id);
+                    }
+                }
+                RORouteDef* route = getRouteDef(pars->routeid)->copy(pars->routeid, pars->depart);
+                ROVehicle* veh = new ROVehicle(*pars, route, type, this, errorHandler);
+                addVehicle(pars->id, veh);
+            }
+        } else if (pars->repetitionProbability > 0) {
             if (pars->repetitionEnd > pars->depart && pars->repetitionsDone < pars->repetitionNumber) {
                 myHaveActiveFlows = true;
             }
@@ -850,7 +914,7 @@ RONet::adaptIntermodalRouter(ROIntermodalRouter& router) {
     // add access to transfer from walking to taxi-use
     if ((router.getCarWalkTransfer() & ModeChangeOptions::TAXI_PICKUP_ANYWHERE) != 0) {
         for (const ROEdge* edge : ROEdge::getAllEdges()) {
-            if ((edge->getPermissions() & SVC_PEDESTRIAN) != 0 && (edge->getPermissions() & SVC_TAXI) != 0) {
+            if (!edge->isTazConnector() && (edge->getPermissions() & SVC_PEDESTRIAN) != 0 && (edge->getPermissions() & SVC_TAXI) != 0) {
                 router.getNetwork()->addCarAccess(edge, SVC_TAXI, taxiWait);
             }
         }

@@ -60,7 +60,7 @@
 void
 fillOptions() {
     OptionsCont& oc = OptionsCont::getOptions();
-    oc.addCallExample("-c <CONFIGURATION>", "run with configuration file");
+    oc.addCallExample("-c <CONFIGURATION>", TL("run with configuration file"));
 
     // insert options sub-topics
     SystemFrame::addConfigurationOptions(oc); // fill this subtopic, too
@@ -246,7 +246,7 @@ int
 main(int argc, char** argv) {
     OptionsCont& oc = OptionsCont::getOptions();
     oc.setApplicationDescription(TL("Importer of O/D-matrices for the microscopic, multi-modal traffic simulation SUMO."));
-    oc.setApplicationName("od2trips", "Eclipse SUMO od2trips Version " VERSION_STRING);
+    oc.setApplicationName("od2trips", "Eclipse SUMO od2trips " VERSION_STRING);
     int ret = 0;
     try {
         // initialise subsystems

@@ -21,26 +21,13 @@
 #include <netedit/changes/GNEChange_DemandElement.h>
 #include <netedit/dialogs/basic/GNEOverwriteElement.h>
 #include <netedit/dialogs/basic/GNEWarningBasicDialog.h>
-#include <netedit/elements/additional/GNETAZ.h>
 #include <netedit/frames/common/GNEInspectorFrame.h>
-#include <netedit/frames/demand/GNEVehicleFrame.h>
 #include <netedit/frames/GNEAttributesEditor.h>
-#include <netedit/frames/GNEPathCreator.h>
-#include <netedit/frames/GNEPlanCreator.h>
 #include <netedit/GNEApplicationWindow.h>
 #include <netedit/GNENet.h>
-#include <netedit/GNENetHelper.h>
-#include <netedit/GNETagPropertiesDatabase.h>
 #include <netedit/GNEUndoList.h>
-#include <netedit/GNEViewNet.h>
 #include <netedit/GNEViewParent.h>
-#include <utils/common/StringTokenizer.h>
-#include <utils/common/SUMOVehicleClass.h>
-#include <utils/vehicle/SUMORouteHandler.h>
 #include <utils/xml/NamespaceIDs.h>
-#include <utils/xml/SUMOSAXAttributes.h>
-#include <utils/xml/SUMOSAXHandler.h>
-#include <utils/xml/SUMOXMLDefinitions.h>
 
 #include "GNEContainer.h"
 #include "GNEPerson.h"
@@ -211,8 +198,11 @@ GNERouteHandler::buildRoute(const CommonXMLStructure::SumoBaseObject* sumoBaseOb
     } else {
         // parse edges
         const auto edges = parseEdges(SUMO_TAG_ROUTE, id, edgeIDs);
-        if (edges.empty()) {
-            return writeErrorEmptyEdges(SUMO_TAG_ROUTE, id);
+        // check edges
+        const auto validEdges = GNERoute::isRouteValid(edges);
+        // continue depending if route is valid
+        if (validEdges.size() > 0) {
+            return writeError(TLF("Could not build % with ID '%' in netedit; %.", toString(SUMO_TAG_ROUTE), id, validEdges));
         } else {
             // create GNERoute
             GNEDemandElement* route = new GNERoute(id, myNet, myFilename, vClass, edges, color, repeat, cycleTime, routeParameters);
@@ -357,8 +347,11 @@ GNERouteHandler::buildVehicleEmbeddedRoute(const CommonXMLStructure::SumoBaseObj
     } else {
         // parse route edges
         const auto edges = parseEdges(GNE_TAG_ROUTE_EMBEDDED, vehicleParameters.id, edgeIDs);
-        if (edges.empty()) {
-            return writeErrorEmptyEdges(GNE_TAG_ROUTE_EMBEDDED, vehicleParameters.id);
+        // check edges
+        const auto validEdges = GNERoute::isRouteValid(edges);
+        // continue depending if route is valid
+        if (validEdges.size() > 0) {
+            return writeError(TLF("Could not build % with ID '%' in netedit; %.", toString(GNE_TAG_VEHICLE_WITHROUTE), vehicleParameters.id, validEdges));
         } else {
             // obtain  type
             GNEDemandElement* type = getType(vehicleParameters.vtypeid);
@@ -449,8 +442,11 @@ GNERouteHandler::buildFlowEmbeddedRoute(const CommonXMLStructure::SumoBaseObject
     } else {
         // parse route edges
         const auto edges = parseEdges(GNE_TAG_FLOW_WITHROUTE, vehicleParameters.id, edgeIDs);
-        if (edges.empty()) {
-            return writeErrorEmptyEdges(GNE_TAG_FLOW_WITHROUTE, vehicleParameters.id);
+        // check edges
+        const auto validEdges = GNERoute::isRouteValid(edges);
+        // continue depending if route is valid
+        if (validEdges.size() > 0) {
+            return writeError(TLF("Could not build % with ID '%' in netedit; %.", toString(GNE_TAG_FLOW_WITHROUTE), vehicleParameters.id, validEdges));
         } else {
             // obtain  type
             GNEDemandElement* type = getType(vehicleParameters.vtypeid);

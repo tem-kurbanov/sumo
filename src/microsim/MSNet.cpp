@@ -192,6 +192,7 @@ MSNet::getInstance(void) {
 
 void
 MSNet::initStatic() {
+    gRoutingPreferences = false;
     MSDriveWay::init();
 }
 
@@ -356,6 +357,50 @@ MSNet::getRestrictions(const std::string& id) const {
         return nullptr;
     }
     return &i->second;
+}
+
+
+double
+MSNet::getPreference(const std::string& routingType, const SUMOVTypeParameter& pars) const {
+    if (gRoutingPreferences) {
+        auto it = myVTypePreferences.find(pars.id);
+        if (it != myVTypePreferences.end()) {
+            auto it2 = it->second.find(routingType);
+            if (it2 != it->second.end()) {
+                return it2->second;
+            }
+        }
+        auto it3 = myVClassPreferences.find(pars.vehicleClass);
+        if (it3 != myVClassPreferences.end()) {
+            auto it4 = it3->second.find(routingType);
+            if (it4 != it3->second.end()) {
+                return it4->second;
+            }
+        }
+        // fallback to generel preferences
+        it = myVTypePreferences.find("");
+        if (it != myVTypePreferences.end()) {
+            auto it2 = it->second.find(routingType);
+            if (it2 != it->second.end()) {
+                return it2->second;
+            }
+        }
+    }
+    return 1;
+}
+
+
+void
+MSNet::addPreference(const std::string& routingType, SUMOVehicleClass svc, double prio) {
+    myVClassPreferences[svc][routingType] = prio;
+    gRoutingPreferences = true;
+}
+
+
+void
+MSNet::addPreference(const std::string& routingType, std::string vType, double prio) {
+    myVTypePreferences[vType][routingType] = prio;
+    gRoutingPreferences = true;
 }
 
 void
@@ -1066,7 +1111,12 @@ MSNet::writeOutput() {
 
     // check fcd dumps
     if (OptionsCont::getOptions().isSet("fcd-output")) {
-        MSFCDExport::write(OutputDevice::getDeviceByOption("fcd-output"), myStep);
+        if (OptionsCont::getOptions().isSet("person-fcd-output")) {
+            MSFCDExport::write(OutputDevice::getDeviceByOption("fcd-output"), myStep, SUMO_TAG_VEHICLE);
+            MSFCDExport::write(OutputDevice::getDeviceByOption("person-fcd-output"), myStep, SUMO_TAG_PERSON);
+        } else {
+            MSFCDExport::write(OutputDevice::getDeviceByOption("fcd-output"), myStep);
+        }
     }
 
     // check emission dumps
@@ -1581,7 +1631,7 @@ MSNet::getIntermodalRouter(int rngIndex, const int routingMode, const Prohibitio
     const OptionsCont& oc = OptionsCont::getOptions();
     const int key = rngIndex * oc.getInt("thread-rngs") + routingMode;
     if (myIntermodalRouter.count(key) == 0) {
-        const int carWalk = SUMOVehicleParserHelper::parseCarWalkTransfer(oc, MSDevice_Taxi::getTaxi() != nullptr);
+        const int carWalk = SUMOVehicleParserHelper::parseCarWalkTransfer(oc, MSDevice_Taxi::hasFleet() || myInserter->hasTaxiFlow());
         const std::string routingAlgorithm = OptionsCont::getOptions().getString("routing-algorithm");
         const double taxiWait = STEPS2TIME(string2time(OptionsCont::getOptions().getString("persontrip.taxi.waiting-time")));
         if (routingMode == libsumo::ROUTING_MODE_COMBINED) {

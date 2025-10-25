@@ -27,6 +27,12 @@
 #include "GNEDemandElementFlow.h"
 
 // ===========================================================================
+// class declaration
+// ===========================================================================
+
+class GNEMoveElementPlanParent;
+
+// ===========================================================================
 // class definitions
 // ===========================================================================
 
@@ -110,10 +116,19 @@ public:
     /// @brief destructor
     ~GNEContainer();
 
-    /**@brief get move operation
-     * @note returned GNEMoveOperation can be nullptr
-     */
-    GNEMoveOperation* getMoveOperation();
+    /// @brief methods to retrieve the elements linked to this container
+    /// @{
+
+    /// @brief get GNEMoveElement associated with this container
+    GNEMoveElement* getMoveElement() const override;
+
+    /// @brief get parameters associated with this container
+    Parameterised* getParameters() override;
+
+    /// @brief get parameters associated with this container (constant)
+    const Parameterised* getParameters() const override;
+
+    /// @}
 
     /**@brief write demand element element into a xml file
      * @param[in] device device in which write parameters of demand element element
@@ -142,7 +157,7 @@ public:
     /// @name Functions related with geometry of element
     /// @{
     /// @brief update pre-computed geometry information
-    void updateGeometry();
+    void updateGeometry() override;
 
     /// @brief Returns position of demand element in view
     Position getPositionInView() const;
@@ -216,19 +231,19 @@ public:
      * @param[in] key The attribute key
      * @return string with the value associated to key
      */
-    std::string getAttribute(SumoXMLAttr key) const;
+    std::string getAttribute(SumoXMLAttr key) const override;
 
-    /* @brief method for getting the Attribute of an XML key in double format (to avoid unnecessary parse<double>(...) for certain attributes)
+    /* @brief method for getting the Attribute of an XML key in double format
      * @param[in] key The attribute key
      * @return double with the value associated to key
      */
-    double getAttributeDouble(SumoXMLAttr key) const;
+    double getAttributeDouble(SumoXMLAttr key) const override;
 
-    /* @brief method for getting the Attribute of an XML key in Position format (used in container plans)
+    /* @brief method for getting the Attribute of an XML key in position format
      * @param[in] key The attribute key
-     * @return double with the value associated to key
+     * @return position with the value associated to key
      */
-    Position getAttributePosition(SumoXMLAttr key) const;
+    Position getAttributePosition(SumoXMLAttr key) const override;
 
     /* @brief method for setting the attribute and letting the object perform demand element changes
      * @param[in] key The attribute key
@@ -236,14 +251,14 @@ public:
      * @param[in] undoList The undoList on which to register changes
      * @param[in] net optionally the GNENet to inform about gui updates
      */
-    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList);
+    void setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* undoList) override;
 
     /* @brief method for setting the attribute and letting the object perform demand element changes
      * @param[in] key The attribute key
      * @param[in] value The new value
      * @param[in] undoList The undoList on which to register changes
      */
-    bool isValid(SumoXMLAttr key, const std::string& value);
+    bool isValid(SumoXMLAttr key, const std::string& value) override;
 
     /* @brief method for enable attribute
      * @param[in] key The attribute key
@@ -265,16 +280,16 @@ public:
     bool isAttributeEnabled(SumoXMLAttr key) const;
 
     /// @brief get PopPup ID (Used in AC Hierarchy)
-    std::string getPopUpID() const;
+    std::string getPopUpID() const override;
 
     /// @brief get Hierarchy Name (Used in AC Hierarchy)
-    std::string getHierarchyName() const;
+    std::string getHierarchyName() const override;
     /// @}
 
-    /// @brief get parameters map
-    const Parameterised::Map& getACParametersMap() const;
-
 protected:
+    /// @brief move element plan parent
+    GNEMoveElementPlanParent* myMoveElementPlanParent = nullptr;
+
     /// @brief variable used for contours
     GNEContour myContainerContour;
 
@@ -314,16 +329,10 @@ private:
     };
 
     /// @brief method for setting the attribute and nothing else
-    void setAttribute(SumoXMLAttr key, const std::string& value);
+    void setAttribute(SumoXMLAttr key, const std::string& value) override;
 
     /// @brief method for enable or disable the attribute and nothing else (used in GNEChange_ToggleAttribute)
     void toggleAttribute(SumoXMLAttr key, const bool value);
-
-    /// @brief set move shape
-    void setMoveShape(const GNEMoveResult& moveResult);
-
-    /// @brief commit move shape
-    void commitMoveShape(const GNEMoveResult& moveResult, GNEUndoList* undoList);
 
     /// @brief Invalidated copy constructor.
     GNEContainer(const GNEContainer&) = delete;
