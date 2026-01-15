@@ -1,6 +1,6 @@
 #!/bin/bash
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-# Copyright (C) 2008-2025 German Aerospace Center (DLR) and others.
+# Copyright (C) 2008-2026 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials are made available under the
 # terms of the Eclipse Public License 2.0 which is available at
 # https://www.eclipse.org/legal/epl-2.0/
@@ -36,22 +36,16 @@ fi
 if test $# -ge 2; then
     pushd ..
     git clone https://github.com/PedestrianDynamics/jupedsim -b $2 --depth 1
-    mkdir jupedsim-build jupedsim-install
-    cd jupedsim-build
-    cmake -DCMAKE_INSTALL_PREFIX=$PWD/../jupedsim-install ../jupedsim
-    cmake --build . -j$(nproc)
-    cmake --install .
+    cmake -B jupedsim-build jupedsim
+    cmake --build jupedsim-build -j$(nproc)
+    cmake --install jupedsim-build
     popd
 fi
 
-mkdir -p $HOME/.ccache
-echo "hash_dir = false" >> $HOME/.ccache/ccache.conf
-echo "base_dir = $PWD/_skbuild/linux-x86_64-3.8" >> $HOME/.ccache/ccache.conf
 cp build_config/pyproject.toml .
 py=/opt/python/cp312-cp312
-$py/bin/python tools/build_config/version.py tools/build_config/setup-sumo.py ./setup.py
+$py/bin/python ./tools/build_config/version.py --pep440 build_config/pyproject/eclipse-sumo.toml pyproject.toml
 $py/bin/python -m build --wheel
-mv dist/eclipse_sumo-* `echo dist/eclipse_sumo-* | sed 's/cp312-cp312/py2.py3-none/'`
 auditwheel repair dist/eclipse_sumo*.whl
 cp -a data tools/libsumo
 for py in /opt/python/cp3[1789]*; do

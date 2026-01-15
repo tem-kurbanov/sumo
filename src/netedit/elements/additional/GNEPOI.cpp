@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -40,18 +40,18 @@
 
 GNEPOI::GNEPOI(SumoXMLTag tag, GNENet* net) :
     Shape(""),
-    GNEAdditional("", net, "", tag, ""),
+    GNEAdditional(net, tag),
     myMoveElementLaneSingle(new GNEMoveElementLaneSingle(this, SUMO_ATTR_POSITION, myPosOverLane, myFriendlyPos, GNEMoveElementLaneSingle::PositionType::SINGLE)),
     myMoveElementViewResizable(new GNEMoveElementViewResizable(this, (tag == GNE_TAG_POIGEO) ? GNEMoveElementView::AttributesFormat::GEO : GNEMoveElementView::AttributesFormat::CARTESIAN,
-                               GNEMoveElementViewResizable::ResizingFormat::WIDTH_HEIGHT, SUMO_ATTR_POSITION, myPosOverView, myWidth, myHeight)) {
+                               GNEMoveElementViewResizable::ResizingFormat::WIDTH_HEIGHT, SUMO_ATTR_POSITION, myPosOverView)) {
 }
 
 
-GNEPOI::GNEPOI(const std::string& id, GNENet* net, const std::string& filename, const std::string& type, const RGBColor& color, const Position& pos,
+GNEPOI::GNEPOI(const std::string& id, GNENet* net, FileBucket* fileBucket, const std::string& type, const RGBColor& color, const Position& pos,
                const bool geo, POIIcon icon, const double layer, const double angle, const std::string& imgFile, const double width,
                const double height, const std::string& name, const Parameterised::Map& parameters) :
     Shape(id, type, color, layer, angle, imgFile, ""),
-    GNEAdditional(id, net, filename, geo ? GNE_TAG_POIGEO : SUMO_TAG_POI, name),
+    GNEAdditional(id, net, geo ? GNE_TAG_POIGEO : SUMO_TAG_POI, fileBucket, name),
     Parameterised(parameters),
     myPosOverView(pos),
     myWidth(width),
@@ -59,7 +59,7 @@ GNEPOI::GNEPOI(const std::string& id, GNENet* net, const std::string& filename, 
     myPOIIcon(icon),
     myMoveElementLaneSingle(new GNEMoveElementLaneSingle(this, SUMO_ATTR_POSITION, myPosOverLane, myFriendlyPos, GNEMoveElementLaneSingle::PositionType::SINGLE)),
     myMoveElementViewResizable(new GNEMoveElementViewResizable(this, geo ? GNEMoveElementView::AttributesFormat::GEO : GNEMoveElementView::AttributesFormat::CARTESIAN,
-                               GNEMoveElementViewResizable::ResizingFormat::WIDTH_HEIGHT, SUMO_ATTR_POSITION, myPosOverView, myWidth, myHeight)) {
+                               GNEMoveElementViewResizable::ResizingFormat::WIDTH_HEIGHT, SUMO_ATTR_POSITION, myPosOverView)) {
     // update position depending of GEO
     if (geo) {
         Position cartesian = myPosOverView;
@@ -71,11 +71,11 @@ GNEPOI::GNEPOI(const std::string& id, GNENet* net, const std::string& filename, 
 }
 
 
-GNEPOI::GNEPOI(const std::string& id, GNENet* net, const std::string& filename, const std::string& type, const RGBColor& color, GNELane* lane, const double posOverLane,
+GNEPOI::GNEPOI(const std::string& id, GNENet* net, FileBucket* fileBucket, const std::string& type, const RGBColor& color, GNELane* lane, const double posOverLane,
                const bool friendlyPos, const double posLat, POIIcon icon, const double layer, const double angle, const std::string& imgFile, const double width,
                const double height, const std::string& name, const Parameterised::Map& parameters) :
-    Shape(id, type, color, layer, angle, imgFile, name),
-    GNEAdditional(id, net, filename, GNE_TAG_POILANE, ""),
+    Shape(id, type, color, layer, angle, imgFile, ""),
+    GNEAdditional(id, net, GNE_TAG_POILANE, fileBucket, name),
     Parameterised(parameters),
     myPosOverLane(posOverLane),
     myFriendlyPos(friendlyPos),
@@ -85,7 +85,7 @@ GNEPOI::GNEPOI(const std::string& id, GNENet* net, const std::string& filename, 
     myPOIIcon(icon),
     myMoveElementLaneSingle(new GNEMoveElementLaneSingle(this, SUMO_ATTR_POSITION, myPosOverLane, myFriendlyPos, GNEMoveElementLaneSingle::PositionType::SINGLE)),
     myMoveElementViewResizable(new GNEMoveElementViewResizable(this, GNEMoveElementView::AttributesFormat::POSITION, GNEMoveElementViewResizable::ResizingFormat::WIDTH_HEIGHT,
-                               SUMO_ATTR_POSITION, myPosOverView, myWidth, myHeight)) {
+                               SUMO_ATTR_POSITION, myPosOverView)) {
     // set parents
     setParent<GNELane*>(lane);
     // update centering boundary without updating grid
@@ -334,11 +334,18 @@ GNEPOI::getPopUpMenu(GUIMainWindow& app, GUISUMOAbstractView& parent) {
         // continue depending of lane number
         if (getTagProperty()->getTag() == GNE_TAG_POILANE) {
             // add option for convert to GNEPOI
-            GUIDesigns::buildFXMenuCommand(ret, TL("Release from lane"), GUIIconSubSys::getIcon(GUIIcon::LANE), &parent, MID_GNE_POI_TRANSFORM);
-            return ret;
+            GUIDesigns::buildFXMenuCommand(ret, TL("Release from lane"), GUIIconSubSys::getIcon(GUIIcon::LANE), &parent, MID_GNE_POI_RELEASE);
         } else {
             // add option for convert to GNEPOI
-            GUIDesigns::buildFXMenuCommand(ret, TL("Attach to nearest lane"), GUIIconSubSys::getIcon(GUIIcon::LANE), &parent, MID_GNE_POI_TRANSFORM);
+            GUIDesigns::buildFXMenuCommand(ret, TL("Attach to nearest lane"), GUIIconSubSys::getIcon(GUIIcon::LANE), &parent, MID_GNE_POI_ATTACH);
+            // check if transform
+            if (GeoConvHelper::getFinal().getProjString() != "!") {
+                if (getTagProperty()->getTag() == GNE_TAG_POIGEO) {
+                    GUIDesigns::buildFXMenuCommand(ret, TL("Transform to POI"), GUIIconSubSys::getIcon(GUIIcon::POI), &parent, MID_GNE_POI_TRANSFORM_POI);
+                } else {
+                    GUIDesigns::buildFXMenuCommand(ret, TL("Transform to POI Geo"), GUIIconSubSys::getIcon(GUIIcon::POIGEO), &parent, MID_GNE_POI_TRANSFORM_POIGEO);
+                }
+            }
         }
     }
     return ret;
@@ -524,7 +531,6 @@ GNEPOI::setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* und
             } else {
                 return myMoveElementViewResizable->setMovingAttribute(key, value, undoList);
             }
-            break;
     }
 }
 
@@ -573,7 +579,6 @@ GNEPOI::isValid(SumoXMLAttr key, const std::string& value) {
             } else {
                 return myMoveElementViewResizable->isMovingAttributeValid(key, value);
             }
-            break;
     }
 }
 
@@ -817,7 +822,6 @@ GNEPOI::setAttribute(SumoXMLAttr key, const std::string& value) {
             } else {
                 return myMoveElementViewResizable->setMovingAttribute(key, value);
             }
-            break;
     }
     // update boundary (except for template)
     if (getID().size() > 0) {

@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -46,22 +46,27 @@ public:
     friend class GNEAdditionalListed;
     friend class GNEAdditionalSquared;
 
+    /**@brief Constructor for templates
+     * @param[in] tag SUMO Tag assigned to this type of object
+     * @param[in] net GNENet in which this AttributeCarrier is stored
+     */
+    GNEAdditional(GNENet* net, SumoXMLTag tag);
+
     /**@brief Constructor
      * @param[in] id Gl-id of the additional element (Must be unique)
-     * @param[in] net pointer to GNENet of this additional element belongs
-     * @param[in] filename file in which this AttributeCarrier is stored
-     * @param[in] tag Type of xml tag that define the additional element (SUMO_TAG_BUS_STOP, SUMO_TAG_REROUTER, etc...)
-     * @param[in] additionalName Additional name
+     * @param[in] tag SUMO Tag assigned to this type of object
+     * @param[in] net GNENet in which this AttributeCarrier is stored
+     * @param[in] fileBucket bucket in which this AttributeCarrier is stored
+     * @param[in] name Additional name
      */
-    GNEAdditional(const std::string& id, GNENet* net, const std::string& filename,
-                  SumoXMLTag tag, const std::string& additionalName);
+    GNEAdditional(const std::string& id, GNENet* net, SumoXMLTag tag, FileBucket* fileBucket, const std::string& name);
 
     /**@brief Constructor for additional with parents
      * @param[in] additionalParent pointer to additional parent
      * @param[in] tag Type of xml tag that define the additional element (SUMO_TAG_BUS_STOP, SUMO_TAG_REROUTER, etc...)
-     * @param[in] additionalName Additional name
+     * @param[in] name Additional name
      */
-    GNEAdditional(GNEAdditional* additionalParent, SumoXMLTag tag, const std::string& additionalName);
+    GNEAdditional(GNEAdditional* additionalParent, SumoXMLTag tag, const std::string& name);
 
     /// @brief Destructor
     ~GNEAdditional();
@@ -80,8 +85,11 @@ public:
 
     /// @}
 
+    /// @brief get reference to fileBucket in which save this AC
+    FileBucket* getFileBucket() const override;
+
     /// @brief Returns the name of the object (default "")
-    virtual const std::string getOptionalName() const;
+    virtual const std::string getOptionalName() const override;
 
     /// @brief obtain additional geometry
     const GUIGeometry& getAdditionalGeometry() const;
@@ -118,16 +126,16 @@ public:
      * @note: if additional needs an additional dialog, this function has to be implemented in childrens (see GNERerouter and GNEVariableSpeedSign)
      * @throw invalid argument if additional doesn't have an additional Dialog
      */
-    virtual void openAdditionalDialog();
+    virtual void openAdditionalDialog(FXWindow* restoringFocusWindow);
 
     /// @brief Returns position of additional in view
     virtual Position getPositionInView() const = 0;
 
     /// @brief return exaggeration associated with this GLObject
-    double getExaggeration(const GUIVisualizationSettings& s) const;
+    double getExaggeration(const GUIVisualizationSettings& s) const override;
 
     /// @brief Returns the boundary to which the view shall be centered in order to show the object
-    Boundary getCenteringBoundary() const;
+    Boundary getCenteringBoundary() const override;
 
     /// @brief update centering boundary (implies change in RTREE)
     virtual void updateCenteringBoundary(const bool updateGrid) = 0;
@@ -173,7 +181,7 @@ public:
      * @return The built popup-menu
      * @see GUIGlObject::getPopUpMenu
      */
-    virtual GUIGLObjectPopupMenu* getPopUpMenu(GUIMainWindow& app, GUISUMOAbstractView& parent);
+    virtual GUIGLObjectPopupMenu* getPopUpMenu(GUIMainWindow& app, GUISUMOAbstractView& parent) override;
 
     /**@brief Returns an own parameter window
      *
@@ -182,25 +190,25 @@ public:
      * @return The built parameter window
      * @see GUIGlObject::getParameterWindow
      */
-    GUIParameterTableWindow* getParameterWindow(GUIMainWindow& app, GUISUMOAbstractView& parent);
+    GUIParameterTableWindow* getParameterWindow(GUIMainWindow& app, GUISUMOAbstractView& parent) override;
 
     /// @brief Returns the additional name
     const std::string& getOptionalAdditionalName() const;
 
     /// @brief check if element is locked
-    bool isGLObjectLocked() const;
+    bool isGLObjectLocked() const override;
 
     /// @brief mark element as front element
-    void markAsFrontElement();
+    void markAsFrontElement() override;
 
     /// @brief delete element
-    void deleteGLObject();
+    void deleteGLObject() override;
 
     /// @brief select element
-    void selectGLObject();
+    void selectGLObject() override;
 
     /// @brief update GLObject (geometry, ID, etc.)
-    void updateGLObject();
+    void updateGLObject() override;
 
     /// @}
 
@@ -208,30 +216,30 @@ public:
     /// @{
 
     /// @brief compute pathElement
-    virtual void computePathElement();
+    virtual void computePathElement() override;
 
     /// @brief check if path element is selected
-    bool isPathElementSelected() const;
+    bool isPathElementSelected() const override;
 
     /**@brief Draws partial object over lane
      * @param[in] s The settings for the current view (may influence drawing)
      * @param[in] segment lane segment
      * @param[in] offsetFront front offset
      */
-    virtual void drawLanePartialGL(const GUIVisualizationSettings& s, const GNESegment* segment, const double offsetFront) const;
+    virtual void drawLanePartialGL(const GUIVisualizationSettings& s, const GNESegment* segment, const double offsetFront) const override;
 
     /**@brief Draws partial object over junction
      * @param[in] s The settings for the current view (may influence drawing)
      * @param[in] segment junction segment
      * @param[in] offsetFront front offset
      */
-    virtual void drawJunctionPartialGL(const GUIVisualizationSettings& s, const GNESegment* segment, const double offsetFront) const;
+    virtual void drawJunctionPartialGL(const GUIVisualizationSettings& s, const GNESegment* segment, const double offsetFront) const override;
 
     /// @brief get first path lane
-    GNELane* getFirstPathLane() const;
+    GNELane* getFirstPathLane() const override;
 
     /// @brief get last path lane
-    GNELane* getLastPathLane() const;
+    GNELane* getLastPathLane() const override;
 
     /// @}
 

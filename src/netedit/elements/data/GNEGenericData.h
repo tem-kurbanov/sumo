@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -80,6 +80,9 @@ public:
     /// @brief check if current generic data is visible
     virtual bool isGenericDataVisible() const = 0;
 
+    /// @brief get reference to fileBucket in which save this AC
+    FileBucket* getFileBucket() const override;
+
     /// @brief get data interval parent
     GNEDataInterval* getDataIntervalParent() const;
 
@@ -144,7 +147,7 @@ public:
      * @return The built popup-menu
      * @see GUIGlObject::getPopUpMenu
      */
-    GUIGLObjectPopupMenu* getPopUpMenu(GUIMainWindow& app, GUISUMOAbstractView& parent);
+    GUIGLObjectPopupMenu* getPopUpMenu(GUIMainWindow& app, GUISUMOAbstractView& parent) override;
 
     /**@brief Returns an own parameter window
      *
@@ -153,16 +156,16 @@ public:
      * @return The built parameter window
      * @see GUIGlObject::getParameterWindow
      */
-    GUIParameterTableWindow* getParameterWindow(GUIMainWindow& app, GUISUMOAbstractView& parent);
+    GUIParameterTableWindow* getParameterWindow(GUIMainWindow& app, GUISUMOAbstractView& parent) override;
 
     /// @brief delete element
-    void deleteGLObject();
+    void deleteGLObject() override;
 
     /// @brief select element
-    void selectGLObject();
+    void selectGLObject() override;
 
     /// @brief update GLObject (geometry, ID, etc.)
-    void updateGLObject();
+    void updateGLObject() override;
 
     /// @}
 
@@ -187,7 +190,7 @@ public:
     /// @{
 
     /// @brief check if path element is selected
-    bool isPathElementSelected() const;
+    bool isPathElementSelected() const override;
 
     /// @}
 

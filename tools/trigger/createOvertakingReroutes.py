@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-# Copyright (C) 2010-2025 German Aerospace Center (DLR) and others.
+# Copyright (C) 2010-2026 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials are made available under the
 # terms of the Eclipse Public License 2.0 which is available at
 # https://www.eclipse.org/legal/epl-2.0/
@@ -29,7 +29,7 @@ from collections import defaultdict
 if 'SUMO_HOME' in os.environ:
     sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools'))
 import sumolib  # noqa
-from sumolib.miscutils import euclidean, parseTime, intIfPossible, openz  # noqa
+from sumolib.miscutils import euclidean, parseTime, intIfPossible, openz, getFlowNumber  # noqa
 from sumolib.geomhelper import naviDegree, minAngleDegreeDiff  # noqa
 from sumolib.net.lane import is_vehicle_class  # noqa
 
@@ -51,13 +51,21 @@ def get_options(args=None):
     op.add_argument("--vclass", default="rail",
                     help="only consider edges which permit the given vehicle class")
     op.add_argument("--min-length", dest="minLength", metavar="FLOAT", default=100.0,
-                    type=float, help="minimum siding distance")
+                    type=float, help="minimum siding length")
+    op.add_argument("--max-length", dest="maxLength", metavar="FLOAT",
+                    type=float, help="maximum siding length")
     op.add_argument("--max-detour-factor", dest="maxDetour", metavar="FLOAT", default=2,
                     type=float, help="Maximum factor by which the siding may be longer than the main path")
     op.add_argument("--min-priority", dest="minPrio", metavar="INT",
                     type=int, help="Minimum edge priority value to be eligible as siding")
-    op.add_argument("-x", "--exclude-all-routes", dest="excludeRoutes", action="store_true", default=False,
-                    help="Exclude all edges that are part of input routes from sidings")
+    op.add_argument("-x", "--exclude-usage", dest="excludeUsage", type=int,
+                    help="Exclude all edges that are used at least INT times by loaded routes")
+    op.add_argument("-X", "--exclude-reverse-usage", dest="excludeRevUsage", type=int, default="1",
+                    help="Exclude all edges that are used at least INT times in reverse by loaded routes")
+    op.add_argument("--reversal-penalty", dest="reversalPenalty", metavar="FLOAT", default=-1,
+                    type=float, help="Set penalty for reversals, by default sidings with reversals are forbidden")
+    op.add_argument("--no-defer", action="store_true", dest="noDefer", default=False,
+                    help="Write more overtakingReroute alternatives and do not defer decision")
     # attributes
     op.add_argument("--prefix", category="attributes", dest="prefix", default="rr",
                     help="prefix for the rerouter ids")
@@ -66,30 +74,43 @@ def get_options(args=None):
     op.add_argument("-e", "--end", category="attributes", default="1:0:0:0", type=op.time,
                     help="interval end time (default 1 day)")
     options = op.parse_args(args=args)
+    options.routes = options.routes.split(',')
     return options
 
 
 def parseRoutes(options):
     routes = dict()
+    edgeUsage = defaultdict(lambda: 0)
+    namedRouteUsage = defaultdict(lambda: 0)
     # assign unique ids (vehicles, flows and routes have separate namespace)
     ids = set()
-    for veh in sumolib.xml.parse(options.routes, ['vehicle', 'flow']):
-        if veh.hasChild('route'):
-            edges = tuple(veh.getChild('route')[0].edges.split())
-            rid = "%s:%s" % (veh.name, veh.id)
-            while rid in ids:
-                rid += "#"
-            ids.add(rid)
-            routes[edges] = rid
-    for route in sumolib.xml.parse(options.routes, ['route']):
-        if route.id:
-            edges = tuple(route.edges.split())
-            rid = "route:%s" % route.id
-            while rid in ids:
-                rid += "#"
-            routes[edges] = rid
+    for rfile in options.routes:
+        for veh in sumolib.xml.parse(rfile, ['vehicle', 'flow']):
+            count = 1 if veh.name == 'vehicle' else getFlowNumber(veh)
+            if veh.hasChild('route'):
+                edges = tuple(veh.getChild('route')[0].edges.split())
+                rid = "%s:%s" % (veh.name, veh.id)
+                while rid in ids:
+                    rid += "#"
+                ids.add(rid)
+                routes[edges] = rid
+                for e in edges:
+                    edgeUsage[e] += count
+            else:
+                namedRouteUsage[veh.route] += count
+        for route in sumolib.xml.parse(rfile, ['route']):
+            if route.id:
+                edges = tuple(route.edges.split())
+                rid = "route:%s" % route.id
+                while rid in ids:
+                    rid += "#"
+                routes[edges] = rid
+                for e in edges:
+                    # assumed minimum usage 1 for each named route
+                    edgeUsage[e] += max(1, namedRouteUsage[route.id])
     # reverse dict because (ids are are uniqe)
-    return dict((rid, edges) for (edges, rid) in routes.items())
+    revDict = dict((rid, edges) for (edges, rid) in routes.items())
+    return revDict, edgeUsage
 
 
 def findSwitches(options, routes, net):
@@ -126,7 +147,7 @@ def findSwitches(options, routes, net):
     return switches
 
 
-def findSidings(options, routes, switches, net):
+def findSidings(options, routes, switches, net, edgeUsage):
     """use duarouter to compute paths that exit and re-enter each route"""
     fromTo = defaultdict(lambda: set())  # from -> set(to)
     fromToRoutes = defaultdict(lambda: [])  # (from, to) -> [(rid, fromIndex), ]
@@ -151,10 +172,20 @@ def findSidings(options, routes, switches, net):
                 i += 1
         tf.write('</routes>')
 
-    # write weights that discourage using the (main) route edges
+    # write weights that discourage using the (main) route edges and their bidi-edge
     mainEdges = set()
+    edgeRevUsage = defaultdict(lambda: 0)
     for rid, edges in routes.items():
         mainEdges.update(edges)
+    mainBidi = set()
+    for eid in mainEdges:
+        if net.hasEdge(eid):
+            e = net.getEdge(eid)
+            b = e.getBidi()
+            if b is not None:
+                mainBidi.add(b.getID())
+                edgeRevUsage[b.getID()] = edgeUsage[eid]
+    mainEdges.update(mainBidi)
 
     tmpWeights = options.outfile + ".tmp.weights.xml"
     with openz(tmpWeights, 'w') as tf:
@@ -174,6 +205,8 @@ def findSidings(options, routes, switches, net):
                      '-w', tmpWeights,
                      '-o', tmpOut,
                      '--alternatives-output', 'NUL',
+                     '--weights.reversal-penalty', str(options.reversalPenalty),
+                     '--bulk-routing',
                      '--ignore-errors',
                      '--no-warnings'],
                     stdout=subprocess.DEVNULL)
@@ -193,8 +226,11 @@ def findSidings(options, routes, switches, net):
         if options.minPrio and any(e not in permitted for e in edges):
             # avoid abusing the opposite direciton track as siding
             continue
-        if options.excludeRoutes and not any(e in mainEdges for e in edges):
-            # do not obstruct any main routes
+        if options.excludeUsage is not None and any(edgeUsage[e] >= options.excludeUsage for e in edges):
+            # do not obstruct frequently used routes
+            continue
+        if any(edgeRevUsage[e] >= options.excludeRevUsage for e in edges):
+            # do not obstruct any reverse routes
             continue
         fromTo = (edges[0], edges[-1])
         for rid, fromIndex, toIndex in fromToRoutes[fromTo]:
@@ -225,6 +261,7 @@ def usesRoute(routes, rid, fromIndex, toIndex, edges):
 
 def filterSidings(options, net, sidings):
     sidings2 = {}
+    usableLengths = defaultdict(dict)  # mainFirst -> main -> usableLength
     for main, (rid, fromIndex, edges) in sidings.items():
         sidingLength = 0  # total length
         usableLength = 0
@@ -239,7 +276,7 @@ def filterSidings(options, net, sidings):
                     usableLength += e.getLength()
 
         warningStart = "Discarding candidate siding from '%s' to '%s' for route '%s' because it" % (
-                edges[0], edges[-1], rid)
+            edges[0], edges[-1], rid)
         if foundSignal:
             if usableLength >= options.minLength:
                 mainLength = 0
@@ -254,9 +291,35 @@ def filterSidings(options, net, sidings):
                     print("Empty main edges in route '%s'" % rid, file=sys.stderr)
                     continue
 
+                if options.maxLength and sidingLength > options.maxLength:
+                    print("%s it is too long (%sm)" % (warningStart, sidingLength))
+                    continue
+
+                isOverlappingLonger = False
+                isOverlappingShorter = []  # list of main sections to which this siding is overlapping and shorter
+                for main2, uLength2 in usableLengths[main[0]].items():
+                    if uLength2 == usableLength:
+                        if main[:len(main2)] == main2:
+                            isOverlappingLonger = True
+                            break
+                        if main2[:len(main)] == main:
+                            isOverlappingShorter.append(main2)
+
+                if isOverlappingLonger:
+                    print("%s it is overlapping a shorter siding with the same signal" % warningStart)
+                    continue
+
                 detourFactor = sidingLength / mainLength
                 if detourFactor <= options.maxDetour:
                     sidings2[main] = (rid, fromIndex, edges)
+                    usableLengths[main[0]][main] = usableLength
+                    for main2 in isOverlappingShorter:
+                        rid2, fromIndex2, edges2 = sidings[main2]
+                        warningStart2 = "Discarding candidate siding from '%s' to '%s' for route '%s' because it" % (
+                            edges2[0], edges2[-1], rid2)
+                        print("%s it is overlapping a shorter siding with the same signal" % warningStart2)
+                        del sidings2[main2]
+                        del usableLengths[main2[0]][main2]
                 else:
                     print("%s is longer than the main route by factor %s" % (warningStart, detourFactor))
             else:
@@ -282,14 +345,24 @@ def findFollowerSidings(options, routes, sidings, sidingRoutes):
     followerSidings = defaultdict(lambda: [])  # mainEdgse -> [mainEdges2, ...]
     for main, (rid, fromIndex, edges) in sidings.items():
         for rid2, fromIndex2 in sidingRoutes[main]:
-            for fromIndex3, main2 in routeSidings[rid2]:
-                if fromIndex3 > fromIndex2:
-                    if main2 not in followerSidings[main]:
-                        followerSidings[main].append(main2)
+            if options.noDefer:
+                for fromIndex3, main2 in routeSidings[rid2]:
+                    if fromIndex3 > fromIndex2:
+                        if main2 not in followerSidings[main]:
+                            followerSidings[main].append(main2)
+            else:
+                minNext = (1e100, None)
+                for fromIndex3, main2 in routeSidings[rid2]:
+                    if fromIndex3 > fromIndex2 and fromIndex3 < minNext[0]:
+                        minNext = fromIndex3, main2
+                main2 = minNext[1]
+                if main2 is not None and main2 not in followerSidings[main]:
+                    followerSidings[main].append(main2)
     return followerSidings
 
 
 def writeSidings(options, routes, sidings, followerSidings):
+    defer = ' defer="0"' if options.noDefer else ''
     with openz(options.outfile, 'w') as outf:
         sumolib.writeXMLHeader(outf, "$Id$", "additional", options=options)
         i = 0
@@ -299,8 +372,8 @@ def writeSidings(options, routes, sidings, followerSidings):
             outf.write('    <interval begin="%s" end="%s">\n' % (options.begin, options.end))
             outf.write('       <overtakingReroute main="%s" siding="%s"/>\n' % (" ".join(main), " ".join(edges)))
             for main2 in followerSidings[main]:
-                outf.write('       <overtakingReroute main="%s" siding="%s"/>\n' % (
-                    " ".join(main2), " ".join(sidings[main2][2])))
+                outf.write('       <overtakingReroute main="%s" siding="%s"%s/>\n' % (
+                    " ".join(main2), " ".join(sidings[main2][2]), defer))
             outf.write('    </interval>\n')
             outf.write('  </rerouter>\n')
             i += 1
@@ -326,11 +399,11 @@ def main(options):
       """
 
     net = sumolib.net.readNet(options.netfile)
-    routes = parseRoutes(options)
+    routes, edgeUsage = parseRoutes(options)
     # print("\n".join(map(str, routes.items())))
     switches = findSwitches(options, routes, net)
     # print("\n".join(map(str, switches.items())))
-    sidings, sidingRoutes = findSidings(options, routes, switches, net)
+    sidings, sidingRoutes = findSidings(options, routes, switches, net, edgeUsage)
     # print("\n".join(map(str, sidings.items())))
     sidings = filterSidings(options, net, sidings)
     followerSidings = findFollowerSidings(options, routes, sidings, sidingRoutes)

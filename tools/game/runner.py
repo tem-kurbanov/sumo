@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-# Copyright (C) 2010-2025 German Aerospace Center (DLR) and others.
+# Copyright (C) 2010-2026 German Aerospace Center (DLR) and others.
 # This program and the accompanying materials are made available under the
 # terms of the Eclipse Public License 2.0 which is available at
 # https://www.eclipse.org/legal/epl-2.0/
@@ -41,7 +41,10 @@ from xml.dom import pulldom
 from collections import defaultdict
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-SUMO_HOME = os.environ.get('SUMO_HOME', os.path.join(_THIS_DIR, '..', '..'))
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    SUMO_HOME = os.environ.get('SUMO_HOME', os.path.join(_THIS_DIR, '..'))
+else:
+    SUMO_HOME = os.environ.get('SUMO_HOME', os.path.join(_THIS_DIR, '..', '..'))
 sys.path.append(os.path.join(SUMO_HOME, 'tools'))
 import sumolib  # noqa
 from sumolib.translation import addLanguageOption, setLanguage, TL  # noqa
@@ -57,9 +60,6 @@ _DEBUG = "debug" in sys.argv
 _SCORES = 30
 BASE = os.path.dirname(sys.argv[0])
 _LANGUAGE_CAPTIONS = {}
-if not os.path.exists(sumolib.translation.LOCALEDIR) and os.path.exists(os.path.join(_THIS_DIR, 'locale')):
-    # monkey patch locale dir for the SUMO game
-    sumolib.translation.LOCALEDIR = os.path.join(_THIS_DIR, 'locale')
 
 
 def updateLocalMessages():

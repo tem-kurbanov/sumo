@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -115,6 +115,9 @@ public:
 
     /// @}
 
+    /// @brief get reference to fileBucket in which save this AC
+    FileBucket* getFileBucket() const override;
+
     /// @name members and functions relative to write data elements into XML
     /// @{
     /// @brief check if current data element is valid to be written into XML (by default true, can be reimplemented in children)
@@ -202,7 +205,7 @@ public:
     /* @brief method for check if the value for certain attribute is set
      * @param[in] key The attribute key
      */
-    bool isAttributeEnabled(SumoXMLAttr key) const;
+    bool isAttributeEnabled(SumoXMLAttr key) const override;
 
     /// @brief get PopPup ID (Used in AC Hierarchy)
     std::string getPopUpID() const override;

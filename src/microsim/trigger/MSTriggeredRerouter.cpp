@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -181,7 +181,7 @@ MSTriggeredRerouter::myStartElement(int element,
         bool ok;
         const std::string allow = attrs.getOpt<std::string>(SUMO_ATTR_ALLOW, getID().c_str(), ok, "", false);
         const std::string disallow = attrs.getOpt<std::string>(SUMO_ATTR_DISALLOW, getID().c_str(), ok, "");
-        const SUMOTime until = attrs.getOptSUMOTimeReporting(SUMO_ATTR_UNTIL, nullptr, ok, -1);
+        const SUMOTime until = attrs.getOptSUMOTimeReporting(SUMO_ATTR_UNTIL, nullptr, ok, TIME2STEPS(-1));
         SVCPermissions permissions = parseVehicleClasses(allow, disallow);
         myParsedRerouteInterval.closed[closedEdge] = std::make_pair(permissions, STEPS2TIME(until));
     }
@@ -306,6 +306,8 @@ MSTriggeredRerouter::myStartElement(int element,
             }
         }
         oloc.minSaving = attrs.getOpt<double>(SUMO_ATTR_MINSAVING, getID().c_str(), ok, 300);
+        const bool hasAlternatives = myParsedRerouteInterval.overtakeLocations.size() > 0;
+        oloc.defer = attrs.getOpt<bool>(SUMO_ATTR_DEFER, getID().c_str(), ok, hasAlternatives);
         myParsedRerouteInterval.overtakeLocations.push_back(oloc);
     }
     if (element == SUMO_TAG_STATION_REROUTE) {
@@ -601,10 +603,10 @@ MSTriggeredRerouter::triggerRouting(SUMOTrafficObject& tObject, MSMoveReminder::
                 continue;
             }
             // negated iterator distance for descending order
-            sortedLocs.push_back(std::make_pair(-(mainStart - veh.getCurrentRouteEdge()), index));
+            sortedLocs.push_back(std::make_pair(-(int)(mainStart - veh.getCurrentRouteEdge()), index));
         }
         std::sort(sortedLocs.begin(), sortedLocs.end());
-        for (auto item : sortedLocs) {
+        for (const auto& item : sortedLocs) {
             index = item.second;
             const OvertakeLocation& oloc = rerouteDef->overtakeLocations[index];
             auto mainStart = veh.getCurrentRouteEdge() - item.first;  // subtracting negative difference
@@ -621,6 +623,9 @@ MSTriggeredRerouter::triggerRouting(SUMOTrafficObject& tObject, MSMoveReminder::
         }
         if (bestIndex >= 0) {
             const OvertakeLocation& oloc = rerouteDef->overtakeLocations[bestIndex];
+            if (oloc.defer) {
+                return false;
+            }
             SUMOAbstractRouter<MSEdge, SUMOVehicle>& router = hasReroutingDevice
                     ? MSRoutingEngine::getRouterTT(veh.getRNGIndex(), veh.getVClass(), rerouteDef->getClosed())
                     : MSNet::getInstance()->getRouterTT(veh.getRNGIndex(), rerouteDef->getClosed());
@@ -633,7 +638,7 @@ MSTriggeredRerouter::triggerRouting(SUMOTrafficObject& tObject, MSMoveReminder::
             const std::string info = getID() + ":" + toString(SUMO_TAG_OVERTAKING_REROUTE) + ":" + best_overtaker_signal.first->getID();
             veh.replaceRouteEdges(newEdges, routeCost, savings, info, false, false, false);
             oloc.sidingExit->addConstraint(veh.getID(), new MSRailSignalConstraint_Predecessor(
-                    MSRailSignalConstraint::PREDECESSOR, best_overtaker_signal.second, best_overtaker_signal.first->getID(), 100, true));
+                                               MSRailSignalConstraint::PREDECESSOR, best_overtaker_signal.second, best_overtaker_signal.first->getID(), 100, true));
             resetClosedEdges(hasReroutingDevice, veh);
         }
         return false;
@@ -933,10 +938,10 @@ MSTriggeredRerouter::rerouteParkingArea(const MSTriggeredRerouter::RerouteInterv
 
 
 std::pair<const SUMOVehicle*, MSRailSignal*>
-MSTriggeredRerouter::overtakingTrain( const SUMOVehicle& veh,
-        ConstMSEdgeVector::const_iterator mainStart,
-        const OvertakeLocation& oloc,
-        double& netSaving) {
+MSTriggeredRerouter::overtakingTrain(const SUMOVehicle& veh,
+                                     ConstMSEdgeVector::const_iterator mainStart,
+                                     const OvertakeLocation& oloc,
+                                     double& netSaving) {
     const ConstMSEdgeVector& route = veh.getRoute().getEdges();
     const MSEdgeVector& main = oloc.main;
     const double vMax = veh.getMaxSpeed();
@@ -1032,14 +1037,14 @@ MSTriggeredRerouter::overtakingTrain( const SUMOVehicle& veh,
                 netSaving = prio2 * (saving - accelTimeLoss2) - prio * (loss + accelTimeLoss);
 #ifdef DEBUG_OVERTAKING
                 std::cout << SIMTIME << " veh=" << veh.getID() << " veh2=" << veh2->getID()
-                    << " sidingStart=" << oloc.siding.front()->getID()
-                    << " ttm=" << timeToMain << " ttm2=" << timeToMain2
-                    << " nCommon=" << nCommon << " cT=" << commonTime << " cT2=" << commonTime2
-                    << " em=" << exitMainTime << " emb2=" << exitMainBlockTime2
-                    << " ttls2=" << timeToLastSignal2
-                    << " saving=" << saving << " loss=" << loss
-                    << " atl=" << accelTimeLoss << " atl2=" << accelTimeLoss2 << " tl2=" << timeLoss2
-                    << " prio=" << prio << " prio2=" << prio2 << " netSaving=" << netSaving << "\n";
+                          << " sidingStart=" << oloc.siding.front()->getID()
+                          << " ttm=" << timeToMain << " ttm2=" << timeToMain2
+                          << " nCommon=" << nCommon << " cT=" << commonTime << " cT2=" << commonTime2
+                          << " em=" << exitMainTime << " emb2=" << exitMainBlockTime2
+                          << " ttls2=" << timeToLastSignal2
+                          << " saving=" << saving << " loss=" << loss
+                          << " atl=" << accelTimeLoss << " atl2=" << accelTimeLoss2 << " tl2=" << timeLoss2
+                          << " prio=" << prio << " prio2=" << prio2 << " netSaving=" << netSaving << "\n";
 #endif
                 if (netSaving > oloc.minSaving) {
                     MSRailSignal* s = findSignal(veh2->getCurrentRouteEdge(), exitMain2);

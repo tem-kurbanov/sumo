@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2006-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2006-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -57,13 +57,30 @@ FXIMPLEMENT_ABSTRACT(GNEDialog, FXDialogBox, MFXDialogBoxMap, ARRAYNUMBER(MFXDia
 // method definitions
 // ===========================================================================
 
-GNEDialog::GNEDialog(GNEApplicationWindow* applicationWindow, const std::string& name,
-                     GUIIcon titleIcon, DialogType type, Buttons buttons, OpenType openType,
-                     ResizeMode resizeMode) :
+GNEDialog::GNEDialog(GNEApplicationWindow* applicationWindow,
+                     const std::string& name, GUIIcon titleIcon, DialogType type, Buttons buttons,
+                     OpenType openType, ResizeMode resizeMode) :
     FXDialogBox(applicationWindow->getApp(), name.c_str(),
                 (resizeMode == ResizeMode::STATIC) ? GUIDesignGNEDialogStatic : GUIDesignGNEDialogResizable,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     myApplicationWindow(applicationWindow),
+    myType(type),
+    myOpenType(openType) {
+    // build dialog only if applicationWindow was created
+    if (applicationWindow->id()) {
+        buildDialog(titleIcon, buttons);
+    }
+}
+
+
+GNEDialog::GNEDialog(GNEApplicationWindow* applicationWindow, GNEDialog* parentDialog,
+                     const std::string& name, GUIIcon titleIcon, DialogType type, Buttons buttons,
+                     OpenType openType, ResizeMode resizeMode) :
+    FXDialogBox(applicationWindow->getApp(), name.c_str(),
+                (resizeMode == ResizeMode::STATIC) ? GUIDesignGNEDialogStatic : GUIDesignGNEDialogResizable,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    myApplicationWindow(applicationWindow),
+    myParentDialog(parentDialog),
     myType(type),
     myOpenType(openType) {
     // build dialog only if applicationWindow was created
@@ -80,6 +97,26 @@ GNEDialog::GNEDialog(GNEApplicationWindow* applicationWindow, const std::string&
                 (resizeMode == ResizeMode::STATIC) ? GUIDesignGNEDialogStaticExplicit : GUIDesignGNEDialogResizableExplicit,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     myApplicationWindow(applicationWindow),
+    myType(type),
+    myOpenType(openType) {
+    // build dialog only if applicationWindow was created
+    if (applicationWindow->id()) {
+        // build dialog
+        buildDialog(titleIcon, buttons);
+        // set explicit size
+        resize(width, height);
+    }
+}
+
+
+GNEDialog::GNEDialog(GNEApplicationWindow* applicationWindow, GNEDialog* parentDialog,
+                     const std::string& name, GUIIcon titleIcon, DialogType type, Buttons buttons,
+                     OpenType openType, ResizeMode resizeMode, const int width, const int height) :
+    FXDialogBox(applicationWindow->getApp(), name.c_str(),
+                (resizeMode == ResizeMode::STATIC) ? GUIDesignGNEDialogStaticExplicit : GUIDesignGNEDialogResizableExplicit,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    myApplicationWindow(applicationWindow),
+    myParentDialog(parentDialog),
     myType(type),
     myOpenType(openType) {
     // build dialog only if applicationWindow was created
@@ -173,9 +210,16 @@ GNEDialog::onKeyPress(FXObject* obj, FXSelector sel, void* ptr) {
         FXEvent* event = (FXEvent*)ptr;
         if (event->code == KEY_Escape) {
             return closeDialogAborting();
-        } else {
-            return FXDialogBox::onKeyPress(obj, sel, ptr);
+        } else if (event->code == KEY_Return) {
+            if (myAcceptButton->hasFocus()) {
+                return closeDialogAccepting();
+            } else if (myCancelButton->hasFocus()) {
+                return closeDialogCanceling();
+            } else if (myAbortButton && myAbortButton->hasFocus()) {
+                return closeDialogAborting();
+            }
         }
+        return FXDialogBox::onKeyPress(obj, sel, ptr);
     }
 }
 
@@ -255,8 +299,12 @@ GNEDialog::closeDialogAccepting() {
     hide();
     // set result
     myResult = Result::ACCEPT;
-    // restore focus to application window (to avoid problems in Linux)
-    myApplicationWindow->setFocus();
+    // restore focus
+    if (myParentDialog) {
+        myParentDialog->setFocus();
+    } else {
+        myApplicationWindow->setFocus();
+    }
     return 1;
 }
 
@@ -271,8 +319,12 @@ GNEDialog::closeDialogCanceling() {
     hide();
     // set result
     myResult = Result::CANCEL;
-    // restore focus to application window (to avoid problems in Linux)
-    myApplicationWindow->setFocus();
+    // restore focus
+    if (myParentDialog) {
+        myParentDialog->setFocus();
+    } else {
+        myApplicationWindow->setFocus();
+    }
     return 0;
 }
 
@@ -287,8 +339,12 @@ GNEDialog::closeDialogAborting() {
     hide();
     // set result
     myResult = Result::ABORT;
-    // restore focus to application window (to avoid problems in Linux)
-    myApplicationWindow->setFocus();
+    // restore focus
+    if (myParentDialog) {
+        myParentDialog->setFocus();
+    } else {
+        myApplicationWindow->setFocus();
+    }
     return 0;
 }
 
@@ -450,7 +506,7 @@ GNEDialog::buildDialog(GUIIcon titleIcon, GNEDialog::Buttons buttons) {
             myFocusButton = myRunButton;
             break;
         }
-        case Buttons::RERUN_BACK_CLOSE: {
+        case Buttons::RERUN_BACK_OK: {
             // run/abort button
             myRunButton = GUIDesigns::buildFXButton(buttonsFrame, TL("Rerun"), "", TL("Rerun tool"),
                                                     GUIIconSubSys::getIcon(GUIIcon::RESET), this,
@@ -460,7 +516,7 @@ GNEDialog::buildDialog(GUIIcon titleIcon, GNEDialog::Buttons buttons) {
                            GUIIconSubSys::getIcon(GUIIcon::BACK), this,
                            MID_GNE_BUTTON_BACK, GUIDesignButtonDialog);
             // cancel button
-            myAcceptButton = GUIDesigns::buildFXButton(buttonsFrame, TL("Close"), "", TL("Close"),
+            myAcceptButton = GUIDesigns::buildFXButton(buttonsFrame, TL("OK"), "", TL("OK"),
                              GUIIconSubSys::getIcon(GUIIcon::YES), this,
                              MID_GNE_BUTTON_ACCEPT, GUIDesignButtonDialog);
             // set focus button

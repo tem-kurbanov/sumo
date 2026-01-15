@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -392,6 +392,9 @@ NLBuilder::buildNet() {
         edges = myEdgeBuilder.build(myXMLHandler.networkVersion());
         junctions = myJunctionBuilder.build();
         junctions->postloadInitContainer();
+        for (MSEdge* e : edges->getEdges()) {
+            e->postLoadInitLaneChanger();
+        }
         routeLoaders = buildRouteLoaderControl(myOptions);
         tlc = myJunctionBuilder.buildTLLogics();
         for (std::string timeStr : myOptions.getStringVector("save-state.times")) {
@@ -477,7 +480,7 @@ NLBuilder::buildDefaultMeanData(const std::string& optionName, const std::string
         try {
             SUMOTime begin = string2time(OptionsCont::getOptions().getString("begin"));
             myDetectorBuilder.createEdgeLaneMeanData(id, -1, begin, -1, "traffic", useLanes, false, false,
-                    false, false, false, 100000, 0, SUMO_const_haltingSpeed, "", "", std::vector<MSEdge*>(), false,
+                    false, false, false, 100000, 0, SUMO_const_haltingSpeed, "", "", std::vector<MSEdge*>(), AggregateType::NO,
                     OptionsCont::getOptions().getString(optionName));
         } catch (InvalidArgument& e) {
             WRITE_ERROR(e.what());

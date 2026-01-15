@@ -1,5 +1,5 @@
-Eclipse SUMO sumo v1_24_0+1295-8333438020a
- Copyright (C) 2001-2025 German Aerospace Center (DLR) and others; https://sumo.dlr.de
+Eclipse SUMO sumo v1_25_0+0257-b3edb448106
+ Copyright (C) 2001-2026 German Aerospace Center (DLR) and others; https://sumo.dlr.de
 A microscopic, multi-modal traffic simulation.
 
 Usage: sumo [OPTION]*
@@ -37,6 +37,9 @@ Output Options:
   --write-metadata                     Write parsable metadata (configuration
                                         etc.) instead of comments
   --output-prefix STR                  Prefix which is applied to all output
+                                        files. The special string 'TIME' is
+                                        replaced by the current time.
+  --output-suffix STR                  Suffix which is applied to all output
                                         files. The special string 'TIME' is
                                         replaced by the current time.
   --precision INT                      Defines the number of digits after the
@@ -455,6 +458,10 @@ Processing Options:
   --weights.turnaround-penalty FLOAT   Apply the given time penalty when
                                         computing routing costs for turnaround
                                         internal lanes
+  --weights.reversal-penalty FLOAT     Apply the given time penalty when
+                                        computing routing costs for train
+                                        reversal. Negative values disable
+                                        reversal
   --persontrip.walk-opposite-factor FLOAT  Use FLOAT as a factor on walking
                                         speed against vehicle traffic direction
 
@@ -464,6 +471,9 @@ Routing Options:
   --weights.random-factor FLOAT        Edge weights for routing are dynamically
                                         disturbed by a random factor drawn
                                         uniformly from [1,FLOAT)
+  --weights.random-factor.dynamic      When using option
+                                        --weights.random-factor, vary the
+                                        randomness over time
   --weights.minor-penalty FLOAT        Apply the given time penalty when
                                         computing minimum routing costs for
                                         minor-link internal lanes
@@ -1041,7 +1051,7 @@ GUI Only Options:
                                         simulation steps
   -B, --breakpoints STR[]              Use TIME[] as times when the simulation
                                         should halt
-  --edgedata-files FILE                Load edge/lane weights for visualization
+  -m, --edgedata-files FILE            Load edge/lane weights for visualization
                                         from FILE
   -N, --alternative-net-file FILE      Load a secondary road network for
                                         abstract visualization from FILE
@@ -1056,8 +1066,6 @@ GUI Only Options:
                                         position
   --tracker-interval TIME              The aggregation period for value tracker
                                         windows
-  --osg-view                           Start with an OpenSceneGraph view
-                                        instead of the regular 2D view
   --gui-testing                        Enable overlay for screen recognition
   --gui-testing-debug                  Enable output messages during
                                         GUI-Testing

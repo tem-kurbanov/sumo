@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -19,15 +19,16 @@
 /****************************************************************************/
 #include <config.h>
 
+#include <utils/common/FileBucket.h>
 #include <utils/common/MsgHandler.h>
 #include <utils/common/RGBColor.h>
 #include <utils/common/SUMOVehicleClass.h>
 #include <utils/options/OptionsCont.h>
 #include <utils/shapes/Shape.h>
 #include <utils/vehicle/SUMOVehicleParserHelper.h>
+#include <utils/xml/NamespaceIDs.h>
 #include <utils/xml/SUMOSAXHandler.h>
 #include <utils/xml/XMLSubSys.h>
-#include <utils/xml/NamespaceIDs.h>
 
 #include "RouteHandler.h"
 
@@ -36,8 +37,8 @@
 // method definitions
 // ===========================================================================
 
-RouteHandler::RouteHandler(const std::string& filename, const bool hardFail) :
-    CommonHandler(filename),
+RouteHandler::RouteHandler(FileBucket* fileBucket, const bool hardFail) :
+    CommonHandler(fileBucket),
     myHardFail(hardFail),
     myFlowBeginDefault(string2time(OptionsCont::getOptions().getString("begin"))),
     myFlowEndDefault(string2time(OptionsCont::getOptions().getString("end"))) {
@@ -180,46 +181,12 @@ RouteHandler::endParseAttributes() {
                 }
                 break;
             case SUMO_TAG_ROUTE_DISTRIBUTION:
-                // overwrite probabilities in children
-                for (int i = 0; i < (int)obj->getStringListAttribute(SUMO_ATTR_ROUTES).size(); i++) {
-                    const auto& routeID = obj->getStringListAttribute(SUMO_ATTR_ROUTES).at(i);
-                    if (i < (int)obj->getDoubleListAttribute(SUMO_ATTR_PROBS).size()) {
-                        const double probability = obj->getDoubleListAttribute(SUMO_ATTR_PROBS).at(i);
-                        // find child
-                        for (auto objChild : obj->getSumoBaseObjectChildren()) {
-                            if (objChild->hasStringAttribute(SUMO_ATTR_ID) && (objChild->getStringAttribute(SUMO_ATTR_ID) == routeID)) {
-                                // routes
-                                objChild->addDoubleAttribute(SUMO_ATTR_PROB, probability);
-                            } else if (objChild->hasStringAttribute(SUMO_ATTR_REFID) && (objChild->getStringAttribute(SUMO_ATTR_REFID) == routeID)) {
-                                // routeReferences
-                                objChild->addDoubleAttribute(SUMO_ATTR_PROB, probability);
-                            }
-                        }
-                    }
-                }
                 // parse object and all their childrens
                 parseSumoBaseObject(obj);
                 // delete object (and all of their childrens)
                 delete obj;
                 break;
             case SUMO_TAG_VTYPE_DISTRIBUTION:
-                // overwrite probabilities in children
-                for (int i = 0; i < (int)obj->getStringListAttribute(SUMO_ATTR_VTYPES).size(); i++) {
-                    const auto& vTypeID = obj->getStringListAttribute(SUMO_ATTR_VTYPES).at(i);
-                    if (i < (int)obj->getDoubleListAttribute(SUMO_ATTR_PROBS).size()) {
-                        const double probability = obj->getDoubleListAttribute(SUMO_ATTR_PROBS).at(i);
-                        // find child
-                        for (auto objChild : obj->getSumoBaseObjectChildren()) {
-                            if (objChild->hasStringAttribute(SUMO_ATTR_ID) && (objChild->getStringAttribute(SUMO_ATTR_ID) == vTypeID)) {
-                                // vTypes
-                                objChild->addDoubleAttribute(SUMO_ATTR_PROB, probability);
-                            } else if (objChild->hasStringAttribute(SUMO_ATTR_REFID) && (objChild->getStringAttribute(SUMO_ATTR_REFID) == vTypeID)) {
-                                // vTypeReferences
-                                objChild->addDoubleAttribute(SUMO_ATTR_PROB, probability);
-                            }
-                        }
-                    }
-                }
                 // parse object and all their childrens
                 parseSumoBaseObject(obj);
                 // delete object (and all of their childrens)
@@ -529,7 +496,7 @@ RouteHandler::parseSumoBaseObject(CommonXMLStructure::SumoBaseObject* obj) {
 void
 RouteHandler::parseVType(const SUMOSAXAttributes& attrs) {
     // parse vehicleType
-    SUMOVTypeParameter* vehicleTypeParameter = SUMOVehicleParserHelper::beginVTypeParsing(attrs, myHardFail, myFilename);
+    SUMOVTypeParameter* vehicleTypeParameter = SUMOVehicleParserHelper::beginVTypeParsing(attrs, myHardFail, myFileBucket->getFilename());
     if (vehicleTypeParameter) {
         // set tag
         myCommonXMLStructure.getCurrentSumoBaseObject()->setTag(SUMO_TAG_VTYPE);
@@ -549,7 +516,7 @@ RouteHandler::parseVTypeRef(const SUMOSAXAttributes& attrs) {
     bool parsedOk = true;
     // special case for ID
     const std::string refId = attrs.get<std::string>(SUMO_ATTR_REFID, "", parsedOk);
-    const double probability = attrs.getOpt<double>(SUMO_ATTR_PROB, refId.c_str(), parsedOk, 1.0);
+    const double probability = attrs.getOpt<double>(SUMO_ATTR_PROB, refId.c_str(), parsedOk, INVALID_DOUBLE);
     if (parsedOk) {
         // set tag
         myCommonXMLStructure.getCurrentSumoBaseObject()->setTag(SUMO_TAG_VTYPE);
@@ -570,16 +537,29 @@ RouteHandler::parseVTypeDistribution(const SUMOSAXAttributes& attrs) {
     const std::string id = attrs.get<std::string>(SUMO_ATTR_ID, "", parsedOk);
     // optional attributes
     const int deterministic = attrs.getOpt<int>(SUMO_ATTR_DETERMINISTIC, id.c_str(), parsedOk, -1);
-    const std::vector<std::string> vTypes = attrs.getOpt<std::vector<std::string> >(SUMO_ATTR_VTYPES, id.c_str(), parsedOk);
-    const std::vector<double> probabilities = attrs.getOpt<std::vector<double> >(SUMO_ATTR_PROBS, id.c_str(), parsedOk);
+    std::vector<std::string> vTypes = attrs.getOpt<std::vector<std::string> >(SUMO_ATTR_VTYPES, id.c_str(), parsedOk);
+    std::vector<double> probabilities = attrs.getOpt<std::vector<double> >(SUMO_ATTR_PROBS, id.c_str(), parsedOk);
+    // adjust sizes and probabilities
+    adjustTypesAndProbabilities(vTypes, probabilities);
+    // continue if all was parsed ok
     if (parsedOk) {
         // set tag
         myCommonXMLStructure.getCurrentSumoBaseObject()->setTag(SUMO_TAG_VTYPE_DISTRIBUTION);
         // add all attributes
         myCommonXMLStructure.getCurrentSumoBaseObject()->addStringAttribute(SUMO_ATTR_ID, id);
         myCommonXMLStructure.getCurrentSumoBaseObject()->addIntAttribute(SUMO_ATTR_DETERMINISTIC, deterministic);
-        myCommonXMLStructure.getCurrentSumoBaseObject()->addStringListAttribute(SUMO_ATTR_VTYPES, vTypes);
-        myCommonXMLStructure.getCurrentSumoBaseObject()->addDoubleListAttribute(SUMO_ATTR_PROBS, probabilities);
+        // add references
+        for (int i = 0; i < (int)vTypes.size(); i++) {
+            // open SUMOBaseOBject
+            myCommonXMLStructure.openSUMOBaseOBject();
+            // set tag
+            myCommonXMLStructure.getCurrentSumoBaseObject()->setTag(SUMO_TAG_VTYPE);
+            // add all attributes
+            myCommonXMLStructure.getCurrentSumoBaseObject()->addStringAttribute(SUMO_ATTR_REFID, vTypes.at(i));
+            myCommonXMLStructure.getCurrentSumoBaseObject()->addDoubleAttribute(SUMO_ATTR_PROB, probabilities.at(i));
+            // close SUMOBaseOBject
+            myCommonXMLStructure.closeSUMOBaseOBject();
+        }
     } else {
         myCommonXMLStructure.getCurrentSumoBaseObject()->setTag(SUMO_TAG_ERROR);
     }
@@ -629,7 +609,7 @@ RouteHandler::parseRouteRef(const SUMOSAXAttributes& attrs) {
     bool parsedOk = true;
     // special case for ID
     const std::string refId = attrs.get<std::string>(SUMO_ATTR_REFID, "", parsedOk);
-    const double probability = attrs.getOpt<double>(SUMO_ATTR_PROB, refId.c_str(), parsedOk, 1.0);
+    const double probability = attrs.getOpt<double>(SUMO_ATTR_PROB, refId.c_str(), parsedOk, INVALID_DOUBLE);
     if (parsedOk) {
         // set tag
         myCommonXMLStructure.getCurrentSumoBaseObject()->setTag(SUMO_TAG_ROUTE);
@@ -689,15 +669,28 @@ RouteHandler::parseRouteDistribution(const SUMOSAXAttributes& attrs) {
     // needed attributes
     const std::string id = attrs.get<std::string>(SUMO_ATTR_ID, "", parsedOk);
     // optional attributes
-    const std::vector<std::string> routes = attrs.getOpt<std::vector<std::string> >(SUMO_ATTR_ROUTES, id.c_str(), parsedOk);
-    const std::vector<double> probabilities = attrs.getOpt<std::vector<double> >(SUMO_ATTR_PROBS, id.c_str(), parsedOk);
+    std::vector<std::string> routes = attrs.getOpt<std::vector<std::string> >(SUMO_ATTR_ROUTES, id.c_str(), parsedOk);
+    std::vector<double> probabilities = attrs.getOpt<std::vector<double> >(SUMO_ATTR_PROBS, id.c_str(), parsedOk);
+    // adjust sizes and probabilities
+    adjustTypesAndProbabilities(routes, probabilities);
+    // continue if all was parsed ok
     if (parsedOk) {
         // set tag
         myCommonXMLStructure.getCurrentSumoBaseObject()->setTag(SUMO_TAG_ROUTE_DISTRIBUTION);
         // add all attributes
         myCommonXMLStructure.getCurrentSumoBaseObject()->addStringAttribute(SUMO_ATTR_ID, id);
-        myCommonXMLStructure.getCurrentSumoBaseObject()->addStringListAttribute(SUMO_ATTR_ROUTES, routes);
-        myCommonXMLStructure.getCurrentSumoBaseObject()->addDoubleListAttribute(SUMO_ATTR_PROBS, probabilities);
+        // add references
+        for (int i = 0; i < (int)routes.size(); i++) {
+            // open SUMOBaseOBject
+            myCommonXMLStructure.openSUMOBaseOBject();
+            // set tag
+            myCommonXMLStructure.getCurrentSumoBaseObject()->setTag(SUMO_TAG_ROUTE);
+            // add all attributes
+            myCommonXMLStructure.getCurrentSumoBaseObject()->addStringAttribute(SUMO_ATTR_REFID, routes.at(i));
+            myCommonXMLStructure.getCurrentSumoBaseObject()->addDoubleAttribute(SUMO_ATTR_PROB, probabilities.at(i));
+            // close SUMOBaseOBject
+            myCommonXMLStructure.closeSUMOBaseOBject();
+        }
     } else {
         myCommonXMLStructure.getCurrentSumoBaseObject()->setTag(SUMO_TAG_ERROR);
     }
@@ -1155,7 +1148,6 @@ RouteHandler::parseNestedCFM(const SumoXMLTag tag, const SUMOSAXAttributes& attr
     } else {
         return writeError(TL("Invalid parsing embedded VType"));
     }
-    return false;
 }
 
 
@@ -1279,7 +1271,6 @@ RouteHandler::parseStopParameters(SUMOVehicleParameter::Stop& stop, const SUMOSA
     stop.speed = attrs.getOpt<double>(SUMO_ATTR_SPEED, nullptr, ok, 0);
     if (stop.speed < 0) {
         return writeError("Speed cannot be negative for stop" + errorSuffix);
-        return false;
     }
     // get the standing duration
     bool expectTrigger = !attrs.hasAttribute(SUMO_ATTR_DURATION) && !attrs.hasAttribute(SUMO_ATTR_UNTIL) && !attrs.hasAttribute(SUMO_ATTR_SPEED);
@@ -1297,7 +1288,6 @@ RouteHandler::parseStopParameters(SUMOVehicleParameter::Stop& stop, const SUMOSA
     stop.until = attrs.getOptSUMOTimeReporting(SUMO_ATTR_UNTIL, nullptr, ok, -1);
     if (!expectTrigger && (!ok || (stop.duration < 0 && stop.until < 0 && stop.speed == 0))) {
         return writeError("Invalid duration or end time is given for a stop" + errorSuffix);
-        return false;
     }
     stop.extension = attrs.getOptSUMOTimeReporting(SUMO_ATTR_EXTENSION, nullptr, ok, -1);
     const bool defaultParking = (stop.triggered || stop.containerTriggered || stop.parkingarea != "");
@@ -1308,7 +1298,6 @@ RouteHandler::parseStopParameters(SUMOVehicleParameter::Stop& stop, const SUMOSA
     }
     if (!ok) {
         return writeError("Invalid bool for 'triggered', 'containerTriggered' or 'parking' for stop" + errorSuffix);
-        return false;
     }
     // expected persons
     const std::vector<std::string>& expected = attrs.getOpt<std::vector<std::string> >(SUMO_ATTR_EXPECTED, nullptr, ok);
@@ -1346,7 +1335,6 @@ RouteHandler::parseStopParameters(SUMOVehicleParameter::Stop& stop, const SUMOSA
         stop.index = attrs.get<int>(SUMO_ATTR_INDEX, nullptr, ok);
         if (!ok || stop.index < 0) {
             return writeError("Invalid 'index' for stop" + errorSuffix);
-            return false;
         }
     }
     stop.started = attrs.getOptSUMOTimeReporting(SUMO_ATTR_STARTED, nullptr, ok, -1);
@@ -1375,6 +1363,19 @@ RouteHandler::isOverFromToJunctions(const CommonXMLStructure::SumoBaseObject* su
 bool
 RouteHandler::isOverFromToTAZs(const CommonXMLStructure::SumoBaseObject* sumoBaseObject) const {
     return sumoBaseObject->hasStringAttribute(SUMO_ATTR_FROM_TAZ) && sumoBaseObject->hasStringAttribute(SUMO_ATTR_TO_TAZ);
+}
+
+
+void
+RouteHandler::adjustTypesAndProbabilities(std::vector<std::string>& vTypes, std::vector<double>& probabilities) {
+    // add more probabilities
+    for (size_t i = probabilities.size(); i < vTypes.size(); i++) {
+        probabilities.push_back(INVALID_DOUBLE);
+    }
+    // reduce number of probabilities
+    while (vTypes.size() < probabilities.size()) {
+        probabilities.pop_back();
+    }
 }
 
 /****************************************************************************/

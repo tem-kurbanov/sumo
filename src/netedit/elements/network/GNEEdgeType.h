@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -23,35 +23,32 @@
 
 #include <netbuild/NBTypeCont.h>
 
-
 // ===========================================================================
 // class declarations
 // ===========================================================================
+
 class GNELaneType;
 class GNEEdgeTemplate;
 class GNECreateEdgeFrame;
 
-
 // ===========================================================================
 // class definitions
 // ===========================================================================
+
 class GNEEdgeType : public GNENetworkElement, public Parameterised, public NBTypeCont::EdgeTypeDefinition {
+
 public:
     /// @brief GNECreateEdgeFrame need access to setAttribute
     friend class GNECreateEdgeFrame;
 
-    /**@brief Constructor for default edge (empty ID)
-     * @param[in] createEdgeFrame Frame in which edgeType is created
-     */
-    GNEEdgeType(GNECreateEdgeFrame* createEdgeFrame);
+    /// @brief default constructor
+    GNEEdgeType(GNENet* net);
+
+    /// @brief default constructor
+    GNEEdgeType(GNENet* net, const std::string& ID);
 
     /// @brief copy constructor (this doesn't create new lanes)
     GNEEdgeType(const GNEEdgeType* edgeType);
-
-    /**@brief Constructor
-     * @param[in] net The net to inform about gui updates
-     */
-    GNEEdgeType(GNENet* net);
 
     /**@brief Constructor (parameters)
      * @param[in] net The net to inform about gui updates
@@ -133,15 +130,6 @@ public:
 
     /// @}
 
-    /// @name Functions related with move elements
-    /// @{
-    /// @brief get move operation for the given shapeOffset (can be nullptr)
-    GNEMoveOperation* getMoveOperation();
-
-    /// @brief remove geometry point in the clicked position
-    void removeGeometryPoint(const Position clickedPosition, GNEUndoList* undoList);
-    /// @}
-
     /// @name inherited from GUIGlObject
     /// @{
     /**@brief Returns an own popup-menu
@@ -151,10 +139,10 @@ public:
      * @return The built popup-menu
      * @see GUIGlObject::getPopUpMenu
      */
-    GUIGLObjectPopupMenu* getPopUpMenu(GUIMainWindow& app, GUISUMOAbstractView& parent);
+    GUIGLObjectPopupMenu* getPopUpMenu(GUIMainWindow& app, GUISUMOAbstractView& parent) override;
 
     /// @brief Returns the boundary to which the view shall be centered in order to show the object
-    Boundary getCenteringBoundary() const;
+    Boundary getCenteringBoundary() const override;
 
     /// @brief update centering boundary (implies change in RTREE)
     void updateCenteringBoundary(const bool updateGrid);
@@ -163,13 +151,13 @@ public:
      * @param[in] s The settings for the current view (may influence drawing)
      * @see GUIGlObject::drawGL
      */
-    void drawGL(const GUIVisualizationSettings& s) const;
+    void drawGL(const GUIVisualizationSettings& s) const override;
 
     /// @brief delete element
-    void deleteGLObject();
+    void deleteGLObject() override;
 
     /// @brief update GLObject (geometry, ID, etc.)
-    void updateGLObject();
+    void updateGLObject() override;
     /// @}
 
     /// @name inherited from GNEAttributeCarrier
@@ -196,7 +184,7 @@ public:
      * @param[in] key The attribute key
      * @return position with the value associated to key
      */
-    PositionVector getAttributePositionVector(SumoXMLAttr key) const;
+    PositionVector getAttributePositionVector(SumoXMLAttr key) const override;
 
     /* @brief method for setting the attribute and letting the object perform additional changes
      * @param[in] key The attribute key
@@ -215,7 +203,7 @@ public:
     /* @brief method for check if the value for certain attribute is set
      * @param[in] key The attribute key
      */
-    bool isAttributeEnabled(SumoXMLAttr key) const;
+    bool isAttributeEnabled(SumoXMLAttr key) const override;
 
     /// @}
 

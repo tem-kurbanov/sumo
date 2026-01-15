@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -92,9 +92,9 @@ FXIMPLEMENT(GUIDialog_ViewSettings::SizePanel,  FXObject,       GUIDialog_SizeMa
 #endif
 GUIDialog_ViewSettings::GUIDialog_ViewSettings(GUISUMOAbstractView* parent, GUIVisualizationSettings* settings) :
     FXTopWindow(parent, TL("View Settings"),
-            GUIIconSubSys::getIcon(GUIIcon::COLORWHEEL),
-            GUIIconSubSys::getIcon(GUIIcon::COLORWHEEL),
-            GUIDesignViewSettingsMainDialog),
+                GUIIconSubSys::getIcon(GUIIcon::COLORWHEEL),
+                GUIIconSubSys::getIcon(GUIIcon::COLORWHEEL),
+                GUIDesignViewSettingsMainDialog),
     GUIPersistentWindowPos(this, "VIEWSETTINGS", true, 20, 40, 700, 500, 400, 20),
     myParent(parent),
     mySettings(settings),
@@ -234,6 +234,7 @@ GUIDialog_ViewSettings::setCurrent(GUIVisualizationSettings* settings) {
 long
 GUIDialog_ViewSettings::onCmdOk(FXObject*, FXSelector, void*) {
     getApp()->reg().writeIntEntry("SETTINGS", "comboRows", (int)myComboRows->getValue());
+    getApp()->reg().writeRealEntry("SETTINGS", "uiscale", myUIScale->getValue());
     hide();
     return 1;
 }
@@ -251,7 +252,7 @@ GUIDialog_ViewSettings::onCmdCancel(FXObject*, FXSelector, void*) {
 long
 GUIDialog_ViewSettings::onKeyPress(FXObject* o, FXSelector sel, void* ptr) {
     const FXEvent* e = (FXEvent*) ptr;
-    if(e->code==KEY_Escape){
+    if (e->code == KEY_Escape) {
         onCmdCancel(nullptr, 0, nullptr);
         return 1;
     }
@@ -920,8 +921,8 @@ GUIDialog_ViewSettings::onCmdColorChange(FXObject* sender, FXSelector, void* /*v
         // vehicles (scaling)
         if (tmpSettings.dataScaler.getActive() == prevDataScaleMode) {
             if (updateScaleRanges(sender, myDataScales.begin(), myDataScales.end(),
-                        myDataScaleThresholds.begin(), myDataScaleThresholds.end(), myDataScaleButtons.begin(),
-                        tmpSettings.dataScaler.getScheme())) {
+                                  myDataScaleThresholds.begin(), myDataScaleThresholds.end(), myDataScaleButtons.begin(),
+                                  tmpSettings.dataScaler.getScheme())) {
                 doRebuildColorMatrices = true;
             }
             if (sender == myDataScaleInterpolation) {
@@ -1089,6 +1090,8 @@ GUIDialog_ViewSettings::onCmdSaveSetting(FXObject*, FXSelector, void* /*data*/) 
     tmpSettings.name = name;
     if (name == mySettings->name || StringUtils::startsWith(mySettings->name, "custom_")) {
         gSchemeStorage.remove(mySettings->name);
+        mySchemeName->removeItem(index);
+        myParent->getColoringSchemesCombo()->removeItem(index);
         myParent->getColoringSchemesCombo()->insertIconItem(index, name.c_str());
     } else {
         gSchemeStorage.get(mySettings->name).copy(myBackup);
@@ -1126,6 +1129,7 @@ GUIDialog_ViewSettings::onCmdDeleteSetting(FXObject*, FXSelector, void* /*data*/
     std::string name = mySchemeName->getItemText(index);
     gSchemeStorage.remove(name);
     mySchemeName->removeItem(index);
+    myParent->getColoringSchemesCombo()->removeItem(index);
     onCmdNameChange(nullptr, 0, (void*) mySchemeName->getItemText(0).c_str());
     gSchemeStorage.writeSettings(getApp());
     return 1;
@@ -2445,7 +2449,7 @@ GUIDialog_ViewSettings::buildDataFrame(FXTabBook* tabbook) {
     FXMatrix* matrixDataScale = new FXMatrix(verticalFrameDataScale, 4, GUIDesignViewSettingsMatrix3);
     new FXLabel(matrixDataScale, TL("Scale size"), nullptr, GUIDesignViewSettingsLabel1);
     myDataScaleMode = new MFXComboBoxIcon(matrixDataScale, nullptr, true, GUIDesignComboBoxVisibleItems,
-            this, MID_SIMPLE_VIEW_COLORCHANGE, GUIDesignComboBoxStatic);
+                                          this, MID_SIMPLE_VIEW_COLORCHANGE, GUIDesignComboBoxStatic);
     myDataScaleInterpolation = new FXCheckButton(matrixDataScale, TL("Interpolate"), this, MID_SIMPLE_VIEW_COLORCHANGE, GUIDesignCheckButtonViewSettings);
     myDataScaleParamKey = new FXComboBox(matrixDataScale, 1, this, MID_SIMPLE_VIEW_COLORCHANGE, GUIDesignComboBoxStatic);
     myDataScaleParamKey->setEditable(true);
@@ -2495,7 +2499,10 @@ GUIDialog_ViewSettings::buildOpenGLFrame(FXTabBook* tabbook) {
     new FXTabItem(tabbook, "openGL", nullptr, GUIDesignViewSettingsTabItemBook1);
     FXScrollWindow* scrollWindow = new FXScrollWindow(tabbook);
     FXVerticalFrame* verticalFrame = new FXVerticalFrame(scrollWindow, GUIDesignViewSettingsVerticalFrame2);
-
+    FXMatrix* m90 = new FXMatrix(verticalFrame, 2, GUIDesignMatrixViewSettings);
+    new FXLabel(m90, TL("UI Scaling"), nullptr, GUIDesignViewSettingsLabel1);
+    myUIScale = new FXRealSpinner(m90, 10, this, MID_SIMPLE_VIEW_COLORCHANGE, GUIDesignViewSettingsSpinDial1);
+    myUIScale->setValue(getApp()->reg().readRealEntry("SETTINGS", "uiscale", 1));
     FXMatrix* m80 = new FXMatrix(verticalFrame, 1, GUIDesignMatrixViewSettings);
     myTrueZ = new FXCheckButton(m80, "Draw all objects at their true Z-level", this, MID_SIMPLE_VIEW_COLORCHANGE);
     myTrueZ->setCheck(mySettings->trueZ);

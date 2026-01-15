@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -30,12 +30,12 @@
 // ===========================================================================
 
 GNERouteDistribution::GNERouteDistribution(GNENet* net) :
-    GNEDemandElement("", net, "", SUMO_TAG_ROUTE_DISTRIBUTION, GNEPathElement::Options::DEMAND_ELEMENT) {
+    GNEDemandElement(net, SUMO_TAG_ROUTE_DISTRIBUTION) {
 }
 
 
-GNERouteDistribution::GNERouteDistribution(const std::string& ID, GNENet* net, const std::string& filename) :
-    GNEDemandElement(ID, net, filename, SUMO_TAG_ROUTE_DISTRIBUTION, GNEPathElement::Options::DEMAND_ELEMENT) {
+GNERouteDistribution::GNERouteDistribution(const std::string& ID, GNENet* net, FileBucket* fileBucket) :
+    GNEDemandElement(ID, net, SUMO_TAG_ROUTE_DISTRIBUTION, fileBucket) {
 }
 
 
@@ -65,18 +65,11 @@ GNERouteDistribution::writeDemandElement(OutputDevice& device) const {
     // write attributes
     device.openTag(getTagProperty()->getTag());
     device.writeAttr(SUMO_ATTR_ID, getID());
-    // check if write route or refs)
+    // write references
     for (const auto& refChild : getChildDemandElements()) {
-        if (refChild->getTagProperty()->getTag() == GNE_TAG_ROUTEREF) {
-            int numReferences = 0;
-            for (const auto& routeChild : refChild->getParentDemandElements().at(1)->getChildDemandElements()) {
-                if (routeChild->getTagProperty()->getTag() == GNE_TAG_ROUTEREF) {
-                    numReferences++;
-                }
-            }
-            if (numReferences == 1) {
-                refChild->getParentDemandElements().at(1)->writeDemandElement(device);
-            } else {
+        if (refChild->getTagProperty()->isDistributionReference()) {
+            if (refChild->getTagProperty()->isDistributionReference() &&
+                    (refChild->getParentDemandElements().front() == this)) {
                 refChild->writeDemandElement(device);
             }
         }
@@ -126,7 +119,12 @@ GNERouteDistribution::getColor() const {
 
 void
 GNERouteDistribution::updateGeometry() {
-    // nothing to update
+    // update geometries of all vehicles
+    for (auto vehicle : getChildDemandElements()) {
+        if (vehicle->getTagProperty()->isVehicle()) {
+            vehicle->updateGeometry();
+        }
+    }
 }
 
 
@@ -163,8 +161,13 @@ GNERouteDistribution::splitEdgeGeometry(const double /*splitPosition*/, const GN
 
 
 void
-GNERouteDistribution::drawGL(const GUIVisualizationSettings&) const {
-    // Vehicle Types aren't draw
+GNERouteDistribution::drawGL(const GUIVisualizationSettings& s) const {
+    // draw all vehicles
+    for (auto vehicle : getChildDemandElements()) {
+        if (vehicle->getTagProperty()->isVehicle()) {
+            vehicle->drawGL(s);
+        }
+    }
 }
 
 

@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2005-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2005-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -130,12 +130,11 @@ public:
      *
      * Recomputes the free space using "computeLastFreePos" then.
      *
-     * @param[in] what The vehicle that enters the bus stop
-     * @param[in] beg The begin halting position of the vehicle
-     * @param[in] what The end halting position of the vehicle
+     * @param[in] veh The vehicle that enters the stopping place
+     * @param[in] parking whether this is offroad parking
      * @see computeLastFreePos
      */
-    void enter(SUMOVehicle* veh, bool parking);
+    virtual void enter(SUMOVehicle* veh, const bool parking);
 
 
     /** @brief Called if a vehicle leaves this stop
@@ -147,7 +146,7 @@ public:
      * @param[in] what The vehicle that leaves the bus stop
      * @see computeLastFreePos
      */
-    void leaveFrom(SUMOVehicle* what);
+    virtual void leaveFrom(SUMOVehicle* what);
 
 
     /** @brief Returns the last free position on this stop

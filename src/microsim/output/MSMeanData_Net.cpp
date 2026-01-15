@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2004-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2004-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -254,10 +254,12 @@ void
 MSMeanData_Net::MSLaneMeanDataValues::write(OutputDevice& dev, const SumoXMLAttrMask& attributeMask, const SUMOTime period,
         const int numLanes, const double speedLimit, const double defaultTravelTime, const int numVehicles) const {
 
-    double density = sampleSeconds / STEPS2TIME(period) * 1000. / myLaneLength;
+    double density = frontSampleSeconds / STEPS2TIME(period) * 1000. / myLaneLength;
+    double overlapDensity = sampleSeconds / STEPS2TIME(period) * 1000. / myLaneLength;
     if (MSGlobals::gLateralResolution < 0) {
         // avoid exceeding upper bound
         density = MIN2(density, 1000 * (double)numLanes / MAX2(minimalVehicleLength, NUMERICAL_EPS));
+        overlapDensity = MIN2(overlapDensity, 1000 * (double)numLanes / MAX2(minimalVehicleLength, NUMERICAL_EPS));
     }
     const double laneDensity = density / (double)numLanes;
     const double occupancy = getOccupancy(period, numLanes);
@@ -274,12 +276,14 @@ MSMeanData_Net::MSLaneMeanDataValues::write(OutputDevice& dev, const SumoXMLAttr
 #endif
 
     if (myParent == nullptr) {
+        const double speed = sampleSeconds == 0 ? 0. : travelledDistance / sampleSeconds;
+        const double frontSpeed = frontSampleSeconds == 0 ? 0. : frontTravelledDistance / frontSampleSeconds;
         dev.writeOptionalAttr(SUMO_ATTR_DENSITY, density, attributeMask, sampleSeconds == 0);
         dev.writeOptionalAttr(SUMO_ATTR_LANEDENSITY, laneDensity, attributeMask, sampleSeconds == 0);
         dev.writeOptionalAttr(SUMO_ATTR_OCCUPANCY, occupancy, attributeMask, sampleSeconds == 0);
         dev.writeOptionalAttr(SUMO_ATTR_WAITINGTIME, waitSeconds, attributeMask, sampleSeconds == 0);
         dev.writeOptionalAttr(SUMO_ATTR_TIMELOSS, timeLoss, attributeMask, sampleSeconds == 0);
-        dev.writeOptionalAttr(SUMO_ATTR_SPEED, sampleSeconds == 0 ? 0. : travelledDistance / sampleSeconds, attributeMask, sampleSeconds == 0);
+        dev.writeOptionalAttr(SUMO_ATTR_SPEED, speed, attributeMask, sampleSeconds == 0);
         dev.writeOptionalAttr(SUMO_ATTR_SPEEDREL, speedLimit == 0. || sampleSeconds == 0 ? 0. : travelledDistance / sampleSeconds / speedLimit,
                               attributeMask, sampleSeconds == 0);
         dev.writeOptionalAttr(SUMO_ATTR_DEPARTED, nVehDeparted, attributeMask);
@@ -288,10 +292,12 @@ MSMeanData_Net::MSLaneMeanDataValues::write(OutputDevice& dev, const SumoXMLAttr
         dev.writeOptionalAttr(SUMO_ATTR_LEFT, nVehLeft, attributeMask);
         dev.writeOptionalAttr(SUMO_ATTR_VAPORIZED, nVehVaporized, attributeMask, nVehVaporized == 0);
         dev.writeOptionalAttr(SUMO_ATTR_TELEPORTED, nVehTeleported, attributeMask, nVehTeleported == 0);
+        dev.writeOptionalAttr(SUMO_ATTR_FLOW, density * frontSpeed * 3.6, attributeMask, frontSampleSeconds == 0);
         dev.closeTag();
         return;
     }
     const bool haveSamples = sampleSeconds > myParent->myMinSamples;
+    const bool haveFrontSamples = frontSampleSeconds > myParent->myMinSamples;
     const bool haveSamplesOrDefault = haveSamples || defaultTravelTime >= 0.;
     bool haveTravelTime = haveSamplesOrDefault;
     double traveltime = myParent->myMaxTravelTime;
@@ -320,15 +326,22 @@ MSMeanData_Net::MSLaneMeanDataValues::write(OutputDevice& dev, const SumoXMLAttr
     }
     dev.writeOptionalAttr(SUMO_ATTR_OVERLAPTRAVELTIME, overlapTraveltime, attributeMask, !haveSamples || numVehicles > 0);
     dev.writeOptionalAttr(SUMO_ATTR_DENSITY, density, attributeMask, !haveSamples || numVehicles > 0);
+    dev.writeOptionalAttr(SUMO_ATTR_OVERLAPDENSITY, overlapDensity, attributeMask, sampleSeconds == 0);
     dev.writeOptionalAttr(SUMO_ATTR_LANEDENSITY, laneDensity, attributeMask, !haveSamples || numVehicles > 0);
     dev.writeOptionalAttr(SUMO_ATTR_OCCUPANCY, occupancy, attributeMask, !haveSamples || numVehicles > 0);
     dev.writeOptionalAttr(SUMO_ATTR_WAITINGTIME, waitSeconds, attributeMask, !haveSamples);
     dev.writeOptionalAttr(SUMO_ATTR_TIMELOSS, timeLoss, attributeMask, !haveSamples);
     double speed = 0.;
+    double frontSpeed = 0.;
     if (haveSamples) {
         speed = travelledDistance / sampleSeconds;
     } else if (defaultTravelTime > 0.) {
         speed = myLaneLength / defaultTravelTime;
+    }
+    if (haveFrontSamples) {
+        frontSpeed = frontTravelledDistance / frontSampleSeconds;
+    } else if (defaultTravelTime > 0.) {
+        frontSpeed = myLaneLength / defaultTravelTime;
     }
     dev.writeOptionalAttr(SUMO_ATTR_SPEED, speed, attributeMask, !haveSamplesOrDefault);
     dev.writeOptionalAttr(SUMO_ATTR_SPEEDREL, speedLimit == 0. ? 0. : speed / speedLimit, attributeMask, !haveSamplesOrDefault);
@@ -340,6 +353,7 @@ MSMeanData_Net::MSLaneMeanDataValues::write(OutputDevice& dev, const SumoXMLAttr
     dev.writeOptionalAttr(SUMO_ATTR_LANECHANGEDTO, nVehLaneChangeTo, attributeMask);
     dev.writeOptionalAttr(SUMO_ATTR_VAPORIZED, nVehVaporized, attributeMask, nVehVaporized == 0);
     dev.writeOptionalAttr(SUMO_ATTR_TELEPORTED, nVehTeleported, attributeMask, nVehTeleported == 0);
+    dev.writeOptionalAttr(SUMO_ATTR_FLOW, density * frontSpeed * 3.6, attributeMask, !haveSamples || numVehicles == 0);
     dev.closeTag();
 }
 
@@ -350,12 +364,17 @@ MSMeanData_Net::MSLaneMeanDataValues::getAttributeValue(SumoXMLAttr a,
     /// @todo: remove redundancy in derived values (density, laneDensity)
     switch (a) {
         case SUMO_ATTR_DENSITY:
-            return MIN2(sampleSeconds / STEPS2TIME(period) * (double) 1000 / myLaneLength,
+            return MIN2(frontSampleSeconds / STEPS2TIME(period) * (double) 1000 / myLaneLength,
                         1000. * numLanes / MAX2(minimalVehicleLength, NUMERICAL_EPS));
         case SUMO_ATTR_LANEDENSITY: {
-            const double density = MIN2(sampleSeconds / STEPS2TIME(period) * (double) 1000 / myLaneLength,
+            const double density = MIN2(frontSampleSeconds / STEPS2TIME(period) * (double) 1000 / myLaneLength,
                                         1000. * numLanes / MAX2(minimalVehicleLength, NUMERICAL_EPS));
             return density / numLanes;
+        }
+        case SUMO_ATTR_OVERLAPDENSITY: {
+            const double overlapDensity = MIN2(sampleSeconds / STEPS2TIME(period) * (double) 1000 / myLaneLength,
+                                               1000. * numLanes / MAX2(minimalVehicleLength, NUMERICAL_EPS));
+            return overlapDensity / numLanes;
         }
         case SUMO_ATTR_OCCUPANCY:
             return occupationSum / STEPS2TIME(period) / myLaneLength / numLanes * (double) 1000;
@@ -379,6 +398,12 @@ MSMeanData_Net::MSLaneMeanDataValues::getAttributeValue(SumoXMLAttr a,
             return nVehVaporized;
         case SUMO_ATTR_TELEPORTED:
             return nVehTeleported;
+        case SUMO_ATTR_FLOW: {
+            const double density = MIN2(frontSampleSeconds / STEPS2TIME(period) * (double) 1000 / myLaneLength,
+                                        1000. * numLanes / MAX2(minimalVehicleLength, NUMERICAL_EPS));
+            const double speed = frontTravelledDistance / frontSampleSeconds;
+            return density * speed * 3.6;
+        }
         default:
             return 0;
     }
@@ -400,7 +425,7 @@ MSMeanData_Net::MSMeanData_Net(const std::string& id,
                                const std::string& vTypes,
                                const std::string& writeAttributes,
                                const std::vector<MSEdge*>& edges,
-                               bool aggregate) :
+                               AggregateType aggregate) :
     MSMeanData(id, dumpBegin, dumpEnd, useLanes, withEmpty, printDefaults,
                withInternal, trackVehicles, detectPersons, maxTravelTime, minSamples, vTypes, writeAttributes, edges, aggregate),
     myHaltSpeed(haltSpeed)
@@ -432,6 +457,7 @@ MSMeanData_Net::getAttributeNames() const {
     result.push_back(toString(SUMO_ATTR_LEFT));
     result.push_back(toString(SUMO_ATTR_VAPORIZED));
     result.push_back(toString(SUMO_ATTR_TELEPORTED));
+    result.push_back(toString(SUMO_ATTR_FLOW));
     return result;
 }
 

@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2007-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2007-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -69,8 +69,7 @@ std::map<std::pair<const MSEdge*, const MSEdge*>, ConstMSRoutePtr> MSRoutingEngi
 double MSRoutingEngine::myPriorityFactor(0);
 double MSRoutingEngine::myMinEdgePriority(std::numeric_limits<double>::max());
 double MSRoutingEngine::myEdgePriorityRange(0);
-std::map<std::thread::id, SumoRNG*> MSRoutingEngine::myThreadRNGs;
-bool MSRoutingEngine::myHaveRoutingThreads(false);
+bool MSRoutingEngine::myDynamicRandomness(false);
 
 SUMOAbstractRouter<MSEdge, SUMOVehicle>::Operation MSRoutingEngine::myEffortFunc = &MSRoutingEngine::getEffort;
 #ifdef HAVE_FOX
@@ -156,6 +155,7 @@ MSRoutingEngine::_initEdgeWeights(std::vector<double>& edgeSpeeds, std::vector<s
         myEdgePriorityRange = maxEdgePriority - myMinEdgePriority;
         myLastAdaptation = MSNet::getInstance()->getCurrentTimeStep();
         myPriorityFactor = oc.getFloat("weights.priority-factor");
+        myDynamicRandomness = oc.getBool("weights.random-factor.dynamic");
         if (myPriorityFactor < 0) {
             throw ProcessError(TL("weights.priority-factor cannot be negative."));
         }
@@ -188,17 +188,6 @@ MSRoutingEngine::getEffortBike(const MSEdge* const e, const SUMOVehicle* const v
     return e->getMinimumTravelTime(v);
 }
 
-SumoRNG*
-MSRoutingEngine::getThreadRNG() {
-    if (myHaveRoutingThreads) {
-        auto it = myThreadRNGs.find(std::this_thread::get_id());
-        // created by InitTask
-        assert(it != myThreadRNGs.end());
-        return it->second;
-    }
-    return nullptr;
-}
-
 
 double
 MSRoutingEngine::getEffortExtra(const MSEdge* const e, const SUMOVehicle* const v, double t) {
@@ -206,7 +195,11 @@ MSRoutingEngine::getEffortExtra(const MSEdge* const e, const SUMOVehicle* const 
                      ? getEffort(e, v, t)
                      : getEffortBike(e, v, t));
     if (gWeightsRandomFactor != 1.) {
-        effort *= RandHelper::rand(1., gWeightsRandomFactor, getThreadRNG());
+        long long int key = v->getRandomSeed() ^ e->getNumericalID();
+        if (myDynamicRandomness) {
+            key ^= SIMSTEP;
+        }
+        effort *= (1 + RandHelper::randHash(key) * (gWeightsRandomFactor - 1));
     }
     if (myPriorityFactor != 0) {
         // lower priority should result in higher effort (and the edge with
@@ -427,7 +420,9 @@ MSRoutingEngine::initRouter(SUMOVehicle* vehicle) {
 
     RailwayRouter<MSEdge, SUMOVehicle>* railRouter = nullptr;
     if (MSNet::getInstance()->hasBidiEdges()) {
-        railRouter = new RailwayRouter<MSEdge, SUMOVehicle>(MSEdge::getAllEdges(), true, myEffortFunc, nullptr, false, true, false, oc.getFloat("railway.max-train-length"));
+        railRouter = new RailwayRouter<MSEdge, SUMOVehicle>(MSEdge::getAllEdges(), true, myEffortFunc, nullptr, false, true, false,
+                oc.getFloat("railway.max-train-length"),
+                oc.getFloat("weights.reversal-penalty"));
     }
     const int carWalk = SUMOVehicleParserHelper::parseCarWalkTransfer(oc, MSDevice_Taxi::hasFleet() || MSNet::getInstance()->getInsertionControl().hasTaxiFlow());
     const double taxiWait = STEPS2TIME(string2time(OptionsCont::getOptions().getString("persontrip.taxi.waiting-time")));
@@ -443,28 +438,6 @@ MSRoutingEngine::initRouter(SUMOVehicle* vehicle) {
                 static_cast<MSEdgeControl::WorkerThread*>(*t)->setRouterProvider(myRouterProvider->clone());
             }
         }
-        myHaveRoutingThreads = true;
-        for (int i = 0; i < threadPool.size(); i++) {
-            threadPool.add(new InitTask(), i);
-        }
-        threadPool.waitAll();
-        // to use when routing is triggered from the main thread (i.e. by a rerouter)
-        myThreadRNGs[std::this_thread::get_id()] = nullptr;
-    }
-#endif
-#endif
-}
-
-
-void
-MSRoutingEngine::initGUIThreadRNG() {
-#ifndef THREAD_POOL
-#ifdef HAVE_FOX
-    MFXWorkerThread::Pool& threadPool = MSNet::getInstance()->getEdgeControl().getThreadPool();
-    if (threadPool.size() > 0) {
-        FXMutexLock lock(myRouteCacheMutex);
-        SumoRNG* rng = new SumoRNG("routingGUI");
-        myThreadRNGs[std::this_thread::get_id()] = rng;
     }
 #endif
 #endif
@@ -735,15 +708,6 @@ MSRoutingEngine::RoutingTask::run(MFXWorkerThread* context) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// MSRoutingEngine::InitTask-methods
-// ---------------------------------------------------------------------------
-void
-MSRoutingEngine::InitTask::run(MFXWorkerThread* /*context*/) {
-    FXMutexLock lock(myRouteCacheMutex);
-    SumoRNG* rng = new SumoRNG("routing_" + toString(myThreadRNGs.size()));
-    myThreadRNGs[std::this_thread::get_id()] = rng;
-}
 
 #endif
 

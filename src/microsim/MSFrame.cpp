@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2002-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2002-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -645,6 +645,9 @@ MSFrame::fillOptions() {
     oc.doRegister("weights.random-factor", new Option_Float(1.));
     oc.addDescription("weights.random-factor", "Routing", TL("Edge weights for routing are dynamically disturbed by a random factor drawn uniformly from [1,FLOAT)"));
 
+    oc.doRegister("weights.random-factor.dynamic", new Option_Bool(false));
+    oc.addDescription("weights.random-factor.dynamic", "Routing", TL("When using option --weights.random-factor, vary the randomness over time"));
+
     oc.doRegister("weights.minor-penalty", new Option_Float(1.5));
     oc.addDescription("weights.minor-penalty", "Routing", TL("Apply the given time penalty when computing minimum routing costs for minor-link internal lanes"));
 
@@ -653,6 +656,9 @@ MSFrame::fillOptions() {
 
     oc.doRegister("weights.turnaround-penalty", new Option_Float(5.0));
     oc.addDescription("weights.turnaround-penalty", "Processing", TL("Apply the given time penalty when computing routing costs for turnaround internal lanes"));
+
+    oc.doRegister("weights.reversal-penalty", new Option_Float(60));
+    oc.addDescription("weights.reversal-penalty", "Processing", TL("Apply the given time penalty when computing routing costs for train reversal. Negative values disable reversal"));
 
     oc.doRegister("weights.priority-factor", new Option_Float(0));
     oc.addDescription("weights.priority-factor", "Routing", TL("Consider edge priorities in addition to travel times, weighted by factor"));
@@ -808,7 +814,7 @@ MSFrame::fillOptions() {
     oc.doRegister("breakpoints", 'B', new Option_StringVector());
     oc.addDescription("breakpoints", "GUI Only", TL("Use TIME[] as times when the simulation should halt"));
 
-    oc.doRegister("edgedata-files", new Option_FileName());
+    oc.doRegister("edgedata-files", 'm', new Option_FileName());
     oc.addSynonyme("edgedata-files", "data-files");
     oc.addDescription("edgedata-files", "GUI Only", TL("Load edge/lane weights for visualization from FILE"));
 
@@ -904,12 +910,10 @@ bool
 MSFrame::checkOptions() {
     OptionsCont& oc = OptionsCont::getOptions();
     bool ok = true;
-    /*
     if (!oc.isSet("net-file") && oc.isDefault("remote-port")) {
         WRITE_ERROR(TL("No network file (-n) specified."));
         ok = false;
     }
-    */
     if (oc.getFloat("scale") < 0.) {
         WRITE_ERROR(TL("Invalid scaling factor."));
         ok = false;

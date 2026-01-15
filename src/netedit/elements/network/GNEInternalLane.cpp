@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -171,19 +171,6 @@ GNEInternalLane::checkDrawMoveContour() const {
 }
 
 
-GNEMoveOperation*
-GNEInternalLane::getMoveOperation() {
-    // internal lanes cannot be moved
-    return nullptr;
-}
-
-
-void
-GNEInternalLane::removeGeometryPoint(const Position /*clickedPosition*/, GNEUndoList* /*undolist*/) {
-    // geometry points of internal lanes cannot be removed
-}
-
-
 long
 GNEInternalLane::onDefault(FXObject* obj, FXSelector sel, void* data) {
     if (myEditor != nullptr) {
@@ -227,11 +214,6 @@ GNEInternalLane::drawGL(const GUIVisualizationSettings& s) const {
                                       s.connectionSettings.connectionWidth);
             // pop layer matrix
             GLHelper::popMatrix();
-            // draw edge name
-            if (s.internalEdgeName.show(this)) {
-                GLHelper::drawTextSettings(s.internalEdgeName, getMicrosimID(), myInternalLaneGeometry.getShape().getLineCenter(),
-                                           s.scale, s.angle);
-            }
             // draw dotted contour
             myNetworkElementContour.drawDottedContours(s, d, this, s.dottedContourSettings.segmentWidth, true);
         }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2025-10-09T13:47:59.916914+01:00 by Eclipse SUMO sumo v1_24_0+1295-8333438020a
+<!-- generated on 2025-12-08T13:11:09.469416+01:00 by Eclipse SUMO sumo v1_25_0+0257-b3edb448106
 -->
 
 <sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
@@ -65,6 +65,9 @@
 
         <!-- Prefix which is applied to all output files. The special string &apos;TIME&apos; is replaced by the current time. -->
         <output-prefix value="" type="STR"/>
+
+        <!-- Suffix which is applied to all output files. The special string &apos;TIME&apos; is replaced by the current time. -->
+        <output-suffix value="" type="STR"/>
 
         <!-- Defines the number of digits after the comma for floating point output -->
         <precision value="2" type="INT"/>
@@ -630,6 +633,9 @@
         <!-- Apply the given time penalty when computing routing costs for turnaround internal lanes -->
         <weights.turnaround-penalty value="5" type="FLOAT"/>
 
+        <!-- Apply the given time penalty when computing routing costs for train reversal. Negative values disable reversal -->
+        <weights.reversal-penalty value="60" type="FLOAT"/>
+
         <!-- Use FLOAT as a factor on walking speed against vehicle traffic direction -->
         <persontrip.walk-opposite-factor value="1" type="FLOAT"/>
 
@@ -641,6 +647,9 @@
 
         <!-- Edge weights for routing are dynamically disturbed by a random factor drawn uniformly from [1,FLOAT) -->
         <weights.random-factor value="1" type="FLOAT"/>
+
+        <!-- When using option --weights.random-factor, vary the randomness over time -->
+        <weights.random-factor.dynamic value="false" type="BOOL"/>
 
         <!-- Apply the given time penalty when computing minimum routing costs for minor-link internal lanes -->
         <weights.minor-penalty value="1.5" type="FLOAT"/>
@@ -1435,7 +1444,7 @@
         <breakpoints value="" synonymes="B" type="STR[]"/>
 
         <!-- Load edge/lane weights for visualization from FILE -->
-        <edgedata-files value="" synonymes="data-files" type="FILE"/>
+        <edgedata-files value="" synonymes="data-files m" type="FILE"/>
 
         <!-- Load a secondary road network for abstract visualization from FILE -->
         <alternative-net-file value="" synonymes="N" type="FILE"/>
@@ -1460,9 +1469,6 @@
 
         <!-- The aggregation period for value tracker windows -->
         <tracker-interval value="1" type="TIME"/>
-
-        <!-- Start with an OpenSceneGraph view instead of the regular 2D view -->
-        <osg-view value="false" type="BOOL"/>
 
         <!-- Enable overlay for screen recognition -->
         <gui-testing value="false" type="BOOL"/>

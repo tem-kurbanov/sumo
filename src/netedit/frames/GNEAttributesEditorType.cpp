@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -52,6 +52,7 @@ GNEAttributesEditorType::AttributesEditorRows GNEAttributesEditorType::mySecondS
 
 FXDEFMAP(GNEAttributesEditorType) GNEAttributeTableMap[] = {
     FXMAPFUNC(SEL_COMMAND,  MID_GNE_ATTRIBUTESEDITOR_FRONT,         GNEAttributesEditorType::onCmdMarkAsFront),
+    FXMAPFUNC(SEL_UPDATE,   MID_GNE_ATTRIBUTESEDITOR_FRONT,         GNEAttributesEditorType::onUpdMarkAsFront),
     FXMAPFUNC(SEL_COMMAND,  MID_GNE_ATTRIBUTESEDITOR_DIALOG,        GNEAttributesEditorType::onCmdOpenElementDialog),
     FXMAPFUNC(SEL_COMMAND,  MID_GNE_ATTRIBUTESEDITOR_EXTENDED,      GNEAttributesEditorType::onCmdOpenExtendedAttributesDialog),
     FXMAPFUNC(SEL_COMMAND,  MID_GNE_ATTRIBUTESEDITOR_PARAMETERS,    GNEAttributesEditorType::onCmdOpenEditParametersDialog),
@@ -60,7 +61,7 @@ FXDEFMAP(GNEAttributesEditorType) GNEAttributeTableMap[] = {
 };
 
 // Object implementation
-FXIMPLEMENT(GNEAttributesEditorType,  MFXGroupBoxModule,  GNEAttributeTableMap,   ARRAYNUMBER(GNEAttributeTableMap))
+FXIMPLEMENT(GNEAttributesEditorType,  GNEGroupBoxModule,  GNEAttributeTableMap,   ARRAYNUMBER(GNEAttributeTableMap))
 
 // ===========================================================================
 // method definitions
@@ -68,34 +69,42 @@ FXIMPLEMENT(GNEAttributesEditorType,  MFXGroupBoxModule,  GNEAttributeTableMap, 
 
 GNEAttributesEditorType::GNEAttributesEditorType(GNEFrame* frameParent, GNEAttributesEditor* attributesEditorParent,
         const std::string attributesEditorName, EditorType editorType, AttributeType attributeType) :
-    MFXGroupBoxModule(frameParent, attributesEditorName.c_str()),
+    GNEGroupBoxModule(frameParent, attributesEditorName.c_str()),
     myFrameParent(frameParent),
     myAttributesEditorParent(attributesEditorParent),
     myEditorType(editorType),
     myAttributeType(attributeType) {
+    // get tooltip
+    auto staticTooltipMenu = myFrameParent->getViewNet()->getViewParent()->getGNEAppWindows()->getStaticTooltipMenu();
     // create netedit especific buttons (before row)
     if (attributeType == AttributeType::NETEDIT) {
         // create netedit editor buttons
-        myFrontButton = GUIDesigns::buildFXButton(getCollapsableFrame(), TL("Front element"), "", "", GUIIconSubSys::getIcon(GUIIcon::FRONTELEMENT), this, MID_GNE_ATTRIBUTESEDITOR_FRONT, GUIDesignButton);
+        myFrontButton = new MFXButtonTooltip(getCollapsableFrame(), staticTooltipMenu, TL("Front element"), GUIIconSubSys::getIcon(GUIIcon::FRONTELEMENT), this, MID_GNE_ATTRIBUTESEDITOR_FRONT, GUIDesignButton);
+        myFrontButton->setTipText(TL("Mark element to be drawn above everything else"));
         myFrontButton->hide();
-        myOpenDialogButton = GUIDesigns::buildFXButton(getCollapsableFrame(), TL("Open element dialog"), "", "", nullptr, this, MID_GNE_ATTRIBUTESEDITOR_DIALOG, GUIDesignButton);
+        myOpenDialogButton = new MFXButtonTooltip(getCollapsableFrame(), staticTooltipMenu, TL("Open element dialog"), nullptr, this, MID_GNE_ATTRIBUTESEDITOR_DIALOG, GUIDesignButton);
+        myOpenDialogButton->setTipText(TL("Open specific element edit dialog"));
         myOpenDialogButton->hide();
         // Create buttons
         myFrameNeteditButtons = new FXHorizontalFrame(getCollapsableFrame(), GUIDesignAuxiliarHorizontalFrame);
-        GUIDesigns::buildFXButton(myFrameNeteditButtons, TL("Help"), TL("Open help attributes dialog"), TL("Open help attributes dialog"), nullptr,
-                                  this, MID_GNE_ATTRIBUTESEDITOR_HELP, GUIDesignButtonRectangular);
-        GUIDesigns::buildFXButton(myFrameNeteditButtons, "", TL("Reset attributes"), TL("Reset attributes"), GUIIconSubSys::getIcon(GUIIcon::RESET),
-                                  this, MID_GNE_ATTRIBUTESEDITOR_RESET, GUIDesignButtonIcon);
+        auto helpButton = new MFXButtonTooltip(myFrameNeteditButtons, staticTooltipMenu, TL("Help"), nullptr,
+                                               this, MID_GNE_ATTRIBUTESEDITOR_HELP, GUIDesignButtonRectangular);
+        helpButton->setTipText(TL("Open help attributes dialog"));
+        auto resetButton = new MFXButtonTooltip(myFrameNeteditButtons, staticTooltipMenu, "", GUIIconSubSys::getIcon(GUIIcon::RESET),
+                                                this, MID_GNE_ATTRIBUTESEDITOR_RESET, GUIDesignButtonIcon);
+        resetButton->setTipText(TL("Reset attributes"));
     }
     // build rows
     buildRows(this);
     // create specific buttons for extended and parameteres
     if (myAttributeType == AttributeType::EXTENDED) {
         // create extended attributes (always shown)
-        myOpenExtendedAttributesButton = GUIDesigns::buildFXButton(getCollapsableFrame(), TL("Edit extended attributes"), "", "", nullptr, this, MID_GNE_ATTRIBUTESEDITOR_EXTENDED, GUIDesignButton);
+        myOpenExtendedAttributesButton = new MFXButtonTooltip(getCollapsableFrame(), staticTooltipMenu, TL("Edit extended attributes"), nullptr, this, MID_GNE_ATTRIBUTESEDITOR_EXTENDED, GUIDesignButton);
+        myOpenExtendedAttributesButton->setTipText(TL("Open dialog for edit extended attributes"));
     } else if (myAttributeType == AttributeType::PARAMETERS) {
         // create generic attributes editor button (always shown)
-        myOpenGenericParametersEditorButton = GUIDesigns::buildFXButton(getCollapsableFrame(), TL("Edit parameters"), "", "", nullptr, this, MID_GNE_ATTRIBUTESEDITOR_PARAMETERS, GUIDesignButton);
+        myOpenGenericParametersEditorButton = new MFXButtonTooltip(getCollapsableFrame(), staticTooltipMenu, TL("Edit parameters"), nullptr, this, MID_GNE_ATTRIBUTESEDITOR_PARAMETERS, GUIDesignButton);
+        myOpenGenericParametersEditorButton->setTipText(TL("Open dialog for edit generic parameters"));
     }
 }
 
@@ -188,6 +197,7 @@ GNEAttributesEditorType::refreshAttributesEditor() {
             // front button
             if (tagProperty->isDrawable()) {
                 myFrontButton->show();
+                myFrontButton->forceRefresh();
                 // disable if we're reparenting
                 if (isReparenting()) {
                     myOpenDialogButton->disable();
@@ -364,6 +374,30 @@ GNEAttributesEditorType::abortReparenting() {
 long
 GNEAttributesEditorType::onCmdMarkAsFront(FXObject*, FXSelector, void*) {
     // check if all element are selectd
+    bool allFront = true;
+    for (auto& AC : myEditedACs) {
+        if (!AC->isMarkedForDrawingFront()) {
+            allFront = false;
+            break;
+        }
+    }
+    // first unfront all elements
+    myFrameParent->getViewNet()->getMarkFrontElements().unmarkAll();
+    // only mark front elements if we have at least one non-front element
+    if (!allFront) {
+        for (auto& AC : myEditedACs) {
+            AC->markForDrawingFront();
+        }
+    }
+    // update after front/unfront
+    myFrameParent->getViewNet()->update();
+    return 1;
+}
+
+
+long
+GNEAttributesEditorType::onUpdMarkAsFront(FXObject*, FXSelector, void*) {
+    // check if all element are selectd
     bool allSelected = true;
     for (auto& AC : myEditedACs) {
         if (!AC->isMarkedForDrawingFront()) {
@@ -371,13 +405,13 @@ GNEAttributesEditorType::onCmdMarkAsFront(FXObject*, FXSelector, void*) {
             break;
         }
     }
-    // only unfronto if all element are front
-    for (auto& AC : myEditedACs) {
-        if (allSelected) {
-            AC->unmarkForDrawingFront();
-        } else {
-            AC->markForDrawingFront();
-        }
+    // set button text depending of all selected
+    if (allSelected) {
+        myFrontButton->setText(TL("Unfront element"));
+        myFrontButton->setTipText(TL("Unfront inspected elements"));
+    } else {
+        myFrontButton->setText(TL("Front element"));
+        myFrontButton->setTipText(TL("Mark element to be drawn above everything else"));
     }
     return 1;
 }
@@ -411,7 +445,7 @@ GNEAttributesEditorType::onCmdOpenExtendedAttributesDialog(FXObject*, FXSelector
     // open vehicle type dialog
     if (demandElement) {
         // open dialog
-        const auto vTypeDialog = GNEVehicleTypeDialog(demandElement);
+        const GNEVehicleTypeDialog vTypeDialog(demandElement);
         if (vTypeDialog.getResult() == GNEDialog::Result::ACCEPT) {
             refreshAttributesEditor();
         }
@@ -423,7 +457,8 @@ GNEAttributesEditorType::onCmdOpenExtendedAttributesDialog(FXObject*, FXSelector
 long
 GNEAttributesEditorType::onCmdOpenEditParametersDialog(FXObject*, FXSelector, void*) {
     // create parameters dialog
-    const auto singleParametersDialog = GNEParametersDialog(myFrameParent->getViewNet()->getViewParent()->getGNEAppWindows(), myEditedACs.front()->getParameters()->getParametersMap());
+    const GNEParametersDialog singleParametersDialog(myFrameParent->getViewNet()->getViewParent()->getGNEAppWindows(),
+            myEditedACs.front()->getParameters()->getParametersMap());
     // continue depending of result
     if (singleParametersDialog.getResult() == GNEDialog::Result::ACCEPT) {
         if (isEditorTypeCreator()) {

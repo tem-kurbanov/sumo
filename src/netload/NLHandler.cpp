@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -971,16 +971,7 @@ NLHandler::addE1Detector(const SUMOSAXAttributes& attrs) {
     const std::string lane = attrs.get<std::string>(SUMO_ATTR_LANE, id.c_str(), ok);
     const std::string file = attrs.get<std::string>(SUMO_ATTR_FILE, id.c_str(), ok);
     const std::string detectPersonsString = attrs.getOpt<std::string>(SUMO_ATTR_DETECT_PERSONS, id.c_str(), ok, "");
-    int detectPersons = 0;
-    for (std::string mode : StringTokenizer(detectPersonsString).getVector()) {
-        if (SUMOXMLDefinitions::PersonModeValues.hasString(mode)) {
-            detectPersons |= (int)SUMOXMLDefinitions::PersonModeValues.get(mode);
-        } else {
-            WRITE_ERRORF(TL("Invalid person mode '%' in E1 detector definition '%'"), mode, id);
-            myCurrentIsBroken = true;
-            return;
-        }
-    }
+    const int detectPersons = parseDetectPersons(detectPersonsString, id, ok);
     if (!ok) {
         myCurrentIsBroken = true;
         return;
@@ -1017,12 +1008,14 @@ NLHandler::addInstantE1Detector(const SUMOSAXAttributes& attrs) {
     const std::string name = attrs.getOpt<std::string>(SUMO_ATTR_NAME, id.c_str(), ok, "");
     const std::string vTypes = attrs.getOpt<std::string>(SUMO_ATTR_VTYPES, id.c_str(), ok, "");
     const std::string nextEdges = attrs.getOpt<std::string>(SUMO_ATTR_NEXT_EDGES, id.c_str(), ok, "");
+    const std::string detectPersonsString = attrs.getOpt<std::string>(SUMO_ATTR_DETECT_PERSONS, id.c_str(), ok, "");
+    const int detectPersons = parseDetectPersons(detectPersonsString, id, ok);
     if (!ok) {
         myCurrentIsBroken = true;
         return;
     }
     try {
-        Parameterised* det = myDetectorBuilder.buildInstantInductLoop(id, lane, position, FileHelpers::checkForRelativity(file, getFileName()), friendlyPos, name, vTypes, nextEdges);
+        Parameterised* det = myDetectorBuilder.buildInstantInductLoop(id, lane, position, FileHelpers::checkForRelativity(file, getFileName()), friendlyPos, name, vTypes, nextEdges, detectPersons);
         myLastParameterised.push_back(det);
     } catch (InvalidArgument& e) {
         WRITE_ERROR(e.what());
@@ -1106,16 +1099,7 @@ NLHandler::addE2Detector(const SUMOSAXAttributes& attrs) {
     double endPosition = attrs.getOpt<double>(SUMO_ATTR_ENDPOS, id.c_str(), ok, std::numeric_limits<double>::max());
     const std::string lanes = attrs.getOpt<std::string>(SUMO_ATTR_LANES, id.c_str(), ok, ""); // lanes has priority to lane
     const std::string detectPersonsString = attrs.getOpt<std::string>(SUMO_ATTR_DETECT_PERSONS, id.c_str(), ok, "");
-    int detectPersons = 0;
-    for (std::string mode : StringTokenizer(detectPersonsString).getVector()) {
-        if (SUMOXMLDefinitions::PersonModeValues.hasString(mode)) {
-            detectPersons |= (int)SUMOXMLDefinitions::PersonModeValues.get(mode);
-        } else {
-            WRITE_ERRORF(TL("Invalid person mode '%' in E2 detector definition '%'"), mode, id);
-            myCurrentIsBroken = true;
-            return;
-        }
-    }
+    const int detectPersons = parseDetectPersons(detectPersonsString, id, ok);
     if (!ok) {
         myCurrentIsBroken = true;
         return;
@@ -1292,16 +1276,7 @@ NLHandler::beginE3Detector(const SUMOSAXAttributes& attrs) {
     const bool openEntry = attrs.getOpt<bool>(SUMO_ATTR_OPEN_ENTRY, id.c_str(), ok, false);
     const bool expectArrival = attrs.getOpt<bool>(SUMO_ATTR_EXPECT_ARRIVAL, id.c_str(), ok, false);
     const std::string detectPersonsString = attrs.getOpt<std::string>(SUMO_ATTR_DETECT_PERSONS, id.c_str(), ok, "");
-    int detectPersons = 0;
-    for (std::string mode : StringTokenizer(detectPersonsString).getVector()) {
-        if (SUMOXMLDefinitions::PersonModeValues.hasString(mode)) {
-            detectPersons |= (int)SUMOXMLDefinitions::PersonModeValues.get(mode);
-        } else {
-            WRITE_ERRORF(TL("Invalid person mode '%' in E3 detector definition '%'"), mode, id);
-            myCurrentIsBroken = true;
-            return;
-        }
-    }
+    const int detectPersons = parseDetectPersons(detectPersonsString, id, ok);
     if (!ok) {
         myCurrentIsBroken = true;
         return;
@@ -1367,7 +1342,13 @@ NLHandler::addEdgeLaneMeanData(const SUMOSAXAttributes& attrs, int objecttype) {
     const SUMOTime end = attrs.getOptSUMOTimeReporting(SUMO_ATTR_END, id.c_str(), ok, string2time(OptionsCont::getOptions().getString("end")));
     std::vector<std::string> edgeIDs = attrs.getOpt<std::vector<std::string> >(SUMO_ATTR_EDGES, id.c_str(), ok);
     const std::string edgesFile = attrs.getOpt<std::string>(SUMO_ATTR_EDGESFILE, id.c_str(), ok, "");
-    const bool aggregate = attrs.getOpt<bool>(SUMO_ATTR_AGGREGATE, id.c_str(), ok, false);
+    const std::string aggregateStr = attrs.getOpt<std::string>(SUMO_ATTR_AGGREGATE, id.c_str(), ok, "false");
+    AggregateType aggregate = AggregateType::NO;
+    if (aggregateStr == "taz") {
+        aggregate = AggregateType::TAZ;
+    } else if (StringUtils::toBool(aggregateStr)) {
+        aggregate = AggregateType::YES;
+    }
     if (!ok) {
         return;
     }
@@ -1501,7 +1482,7 @@ NLHandler::addConnection(const SUMOSAXAttributes& attrs) {
                 return;
             }
             length = via->getLength();
-        } else if (toLane->getEdge().isCrossing()) {
+        } else if (toLane->isCrossing()) {
             length = toLane->getLength();
         } else {
             length = fromLane->getShape()[-1].distanceTo(toLane->getShape()[0]);
@@ -1872,6 +1853,22 @@ NLHandler::addPredecessorConstraint(int element, const SUMOSAXAttributes& attrs,
         }
     }
     return result;
+}
+
+
+int
+NLHandler::parseDetectPersons(const std::string& detectPersonsString, const std::string& id, bool& ok) {
+    int detectPersons = 0;
+    for (std::string mode : StringTokenizer(detectPersonsString).getVector()) {
+        if (SUMOXMLDefinitions::PersonModeValues.hasString(mode)) {
+            detectPersons |= (int)SUMOXMLDefinitions::PersonModeValues.get(mode);
+        } else {
+            WRITE_ERRORF(TL("Invalid person mode '%' in E1 detector definition '%'"), mode, id);
+            ok = false;
+            return 0;
+        }
+    }
+    return detectPersons;
 }
 
 

@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -58,7 +58,7 @@ GNEAttributeCarrierDialog::AttributeTextField::AttributeTextField(GNEAttributeCa
     myACDialogParent(ACDialog),
     myAttrProperty(attrProperty) {
     // get static tooltip menu
-    const auto tooltipMenu = ACDialog->getElement()->getNet()->getViewNet()->getViewParent()->getGNEAppWindows()->getStaticTooltipMenu();
+    const auto tooltipMenu = ACDialog->getElement()->getNet()->getGNEApplicationWindow()->getStaticTooltipMenu();
     // check if create button or label
     if (attrProperty->isVClass() && (attrProperty->getAttr() != SUMO_ATTR_DISALLOW)) {
         myAttributeButton = new MFXButtonTooltip(this, tooltipMenu, attrProperty->getAttrStr(), nullptr, this,
@@ -95,7 +95,7 @@ GNEAttributeCarrierDialog::AttributeTextField::AttributeTextField(GNEAttributeCa
 
 long
 GNEAttributeCarrierDialog::AttributeTextField::onCmdSetAttribute(FXObject* obj, FXSelector, void*) {
-    auto undoList = myACDialogParent->getElement()->getNet()->getViewNet()->getUndoList();
+    auto undoList = myACDialogParent->getElement()->getNet()->getUndoList();
     if (obj == myTextField) {
         if (myACDialogParent->getElement()->isValid(myAttrProperty->getAttr(), myTextField->getText().text())) {
             // set attribute
@@ -137,7 +137,7 @@ GNEAttributeCarrierDialog::AttributeTextField::onCmdOpenColorDialog(FXObject*, F
         color = myAttrProperty->getDefaultColorValue();
     }
     // declare colorDialog
-    const auto colorDialog = new GNEColorDialog(myACDialogParent->getApplicationWindow(), color);
+    const auto colorDialog = new GNEColorDialog(myACDialogParent->getApplicationWindow(), myACDialogParent, color);
     // continue depending of result
     if (colorDialog->getResult() == GNEDialog::Result::ACCEPT) {
         myTextField->setText(toString(colorDialog->getColor()).c_str(), TRUE);
@@ -149,8 +149,8 @@ GNEAttributeCarrierDialog::AttributeTextField::onCmdOpenColorDialog(FXObject*, F
 long
 GNEAttributeCarrierDialog::AttributeTextField::onCmdOpenVClassDialog(FXObject*, FXSelector, void*) {
     // declare allowVClassesDialog
-    const auto allowVClassesDialog = new GNEVClassesDialog(myACDialogParent->getApplicationWindow(), myAttrProperty->getAttr(),
-            myTextField->getText().text());
+    const auto allowVClassesDialog = new GNEVClassesDialog(myACDialogParent->getApplicationWindow(), myACDialogParent,
+            myAttrProperty->getAttr(), myTextField->getText().text());
     // continue depending of result
     if (allowVClassesDialog->getResult() == GNEDialog::Result::ACCEPT) {
         myTextField->setText(allowVClassesDialog->getModifiedVClasses().c_str(), TRUE);
@@ -164,6 +164,44 @@ GNEAttributeCarrierDialog::AttributeTextField::onCmdOpenVClassDialog(FXObject*, 
 
 GNEAttributeCarrierDialog::GNEAttributeCarrierDialog(GNEAttributeCarrier* AC) :
     GNETemplateElementDialog<GNEAttributeCarrier>(AC, DialogType::ATTRIBUTECARRIER) {
+    // build dialog
+    builder(AC);
+}
+
+
+GNEAttributeCarrierDialog::GNEAttributeCarrierDialog(GNEAttributeCarrier* AC, GNEDialog* parentDialog) :
+    GNETemplateElementDialog<GNEAttributeCarrier>(AC, parentDialog, DialogType::ATTRIBUTECARRIER) {
+    // build dialog
+    builder(AC);
+}
+
+
+GNEAttributeCarrierDialog::~GNEAttributeCarrierDialog() {}
+
+
+void
+GNEAttributeCarrierDialog::runInternalTest(const InternalTestStep::DialogArgument* /*dialogArgument*/) {
+    // nothing to do
+}
+
+
+long
+GNEAttributeCarrierDialog::onCmdAccept(FXObject*, FXSelector, void*) {
+    // close dialog accepting changes
+    return acceptElementDialog();
+}
+
+
+long
+GNEAttributeCarrierDialog::onCmdReset(FXObject*, FXSelector, void*) {
+    // reset changes
+    resetChanges();
+    return 1;
+}
+
+
+void
+GNEAttributeCarrierDialog::builder(GNEAttributeCarrier* /* AC */) {
     // Create auxiliar frames for rows
     FXHorizontalFrame* columns = new FXHorizontalFrame(myContentFrame, GUIDesignAuxiliarHorizontalFrame);
     FXVerticalFrame* columnLeft = new FXVerticalFrame(columns, GUIDesignAuxiliarFrameFixedWidth(250));
@@ -183,43 +221,9 @@ GNEAttributeCarrierDialog::GNEAttributeCarrierDialog(GNEAttributeCarrier* AC) :
         // add to myAttributeTextFields vector
         myAttributeTextFields.push_back(attributeTextField);
     }
-    // init commandGroup
-    myElement->getNet()->getViewNet()->getUndoList()->begin(myElement, TLF("edit % '%'", AC->getTagStr(), AC->getID()));
     // open dialog
     openDialog();
 }
 
-
-GNEAttributeCarrierDialog::~GNEAttributeCarrierDialog() {}
-
-
-void
-GNEAttributeCarrierDialog::runInternalTest(const InternalTestStep::DialogArgument* /*dialogArgument*/) {
-    // nothing to do
-}
-
-
-long
-GNEAttributeCarrierDialog::onCmdAccept(FXObject*, FXSelector, void*) {
-    if (false) {
-        // open warning Box
-        GNEWarningBasicDialog(myElement->getNet()->getViewNet()->getViewParent()->getGNEAppWindows(),
-                              TLF("Error editing % '%'", myElement->getTagStr(), myElement->getID()),
-                              TLF("The % '%' cannot be updated because there are invalid attributes.",
-                                  myElement->getTagStr(), myElement->getID()));
-        return 1;
-    } else {
-        // close dialog accepting changes
-        return acceptElementDialog();
-    }
-}
-
-
-long
-GNEAttributeCarrierDialog::onCmdReset(FXObject*, FXSelector, void*) {
-    // reset changes
-    resetChanges();
-    return 1;
-}
 
 /****************************************************************************/

@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -41,12 +41,9 @@ public:
     /**@brief Constructor
      * @param[in] vehicle moved vehicle
      * @param[in] fromEdge Edge of this element belongs
-     * @param[in] departPos Start position value
      * @param[in] toEdge Edge of this element belongs
-     * @param[in] arrivalPos End position value
      */
-    GNEMoveElementVehicle(GNEVehicle* vehicle, GNEEdge* fromEdge, double& departPos,
-                          GNEEdge* toEdge, double& arrivalPos);
+    GNEMoveElementVehicle(GNEVehicle* vehicle, GNEEdge* fromEdge, GNEEdge* toEdge);
 
     /// @brief Destructor
     ~GNEMoveElementVehicle();
@@ -54,7 +51,7 @@ public:
     /**@brief get edge movable move operation for elements with
     * @note returned GNEMoveOperation can be nullptr
     */
-    GNEMoveOperation* getMoveOperation();
+    GNEMoveOperation* getMoveOperation() override;
 
     /// @name functions related with moving attributes
     /// @{
@@ -91,12 +88,6 @@ public:
 private:
     /// @brief vehicle
     GNEVehicle* myVehicle = nullptr;
-
-    /// @brief departPos
-    double& myDepartPos;
-
-    /// @brief arrivalPos
-    double& myArrivalPos;
 
     /// @brief set move shape
     void setMoveShape(const GNEMoveResult& moveResult) override;

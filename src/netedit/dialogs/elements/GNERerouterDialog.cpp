@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -54,7 +54,7 @@ GNERerouterDialog::onCmdAccept(FXObject*, FXSelector, void*) {
     // Check if there is overlapping between Intervals
     if (!myRerouterIntervals->isOverlapping()) {
         // open warning Box
-        GNEWarningBasicDialog(myElement->getNet()->getViewNet()->getViewParent()->getGNEAppWindows(),
+        GNEWarningBasicDialog(myElement->getNet()->getGNEApplicationWindow(), this,
                               TLF("Rerouter intervals of % '%' cannot be saved", toString(SUMO_TAG_REROUTER), myElement->getID()),
                               TL(". There are intervals overlapped."));
         return 1;
@@ -102,7 +102,7 @@ GNERerouterDialog::RerouterIntervalsList::addNewElement() {
 long
 GNERerouterDialog::RerouterIntervalsList::openElementDialog(const size_t rowIndex) {
     // simply open dialog for the edited additional element
-    GNERerouterIntervalDialog(getEditedElements().at(rowIndex));
+    GNERerouterIntervalDialog(getEditedElements().at(rowIndex), myElementDialogParent);
     return 1;
 }
 

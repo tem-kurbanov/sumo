@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -38,7 +38,7 @@ public:
     /// @brief constructor
     GNEMoveElementViewResizable(GNEAttributeCarrier* element, AttributesFormat attributesFormat,
                                 ResizingFormat resizingFormat, SumoXMLAttr posAttr,
-                                Position& position, double& width, double& height);
+                                Position& position);
 
     //// @brief empty destructor
     ~GNEMoveElementViewResizable();
@@ -46,7 +46,7 @@ public:
     /**@brief get move operation
      * @note returned GNEMoveOperation can be nullptr
      */
-    GNEMoveOperation* getMoveOperation();
+    GNEMoveOperation* getMoveOperation() override;
 
 // temporal
 //protected:
@@ -69,20 +69,14 @@ public:
     GNEContour myMovingContourRight;
 
 private:
-    /// @brief width
-    double& myWidth;
-
-    /// @brief height
-    double& myHeight;
-
     /// @brief check if width can be edited
-    const double myEditWidth = false;
+    const bool myEditWidth = false;
 
     /// @brief check if height can be edited
-    const double myEditHeight = false;
+    const bool myEditHeight = false;
 
     /// @brief check if length can be edited
-    const double myEditLength = false;
+    const bool myEditLength = false;
 
     /// @brief set move shape
     void setMoveShape(const GNEMoveResult& moveResult) override;

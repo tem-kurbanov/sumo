@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -30,12 +30,20 @@
 // ===========================================================================
 
 GNERouteRef::GNERouteRef(GNENet* net) :
-    GNEDemandElement("", net, "", GNE_TAG_ROUTEREF, GNEPathElement::Options::DEMAND_ELEMENT) {
+    GNEDemandElement(net, GNE_TAG_ROUTEREF) {
 }
 
 
-GNERouteRef::GNERouteRef(GNEDemandElement* distributionParent, GNEDemandElement* routeParent, const double probability) :
-    GNEDemandElement(distributionParent, GNE_TAG_ROUTEREF, GNEPathElement::Options::DEMAND_ELEMENT),
+GNERouteRef::GNERouteRef(GNEDemandElement* distributionParent, GNEDemandElement* routeParent) :
+    GNEDemandElement(distributionParent, GNE_TAG_ROUTEREF) {
+    // set parents
+    setParents<GNEDemandElement*>({distributionParent, routeParent});
+}
+
+
+GNERouteRef::GNERouteRef(GNEDemandElement* distributionParent, GNEDemandElement* routeParent,
+                         const double probability) :
+    GNEDemandElement(distributionParent, GNE_TAG_ROUTEREF),
     myProbability(probability) {
     // set parents
     setParents<GNEDemandElement*>({distributionParent, routeParent});
@@ -77,7 +85,9 @@ void
 GNERouteRef::writeDemandElement(OutputDevice& device) const {
     device.openTag(SUMO_TAG_ROUTE);
     device.writeAttr(SUMO_ATTR_REFID, getAttribute(SUMO_ATTR_REFID));
-    device.writeAttr(SUMO_ATTR_PROB, myProbability);
+    if (myProbability != INVALID_DOUBLE) {
+        device.writeAttr(SUMO_ATTR_PROB, myProbability);
+    }
     // close tag
     device.closeTag();
 }
@@ -109,7 +119,7 @@ GNERouteRef::getVClass() const {
 
 const RGBColor&
 GNERouteRef::getColor() const {
-    return getParentDemandElements().back()->getColor();
+    return RGBColor::INVISIBLE;
 }
 
 
@@ -139,7 +149,11 @@ GNERouteRef::getExaggeration(const GUIVisualizationSettings& /*s*/) const {
 
 Boundary
 GNERouteRef::getCenteringBoundary() const {
-    return getParentDemandElements().front()->getCenteringBoundary();
+    if (getParentDemandElements().size() > 1) {
+        return getParentDemandElements().at(1)->getCenteringBoundary();
+    } else {
+        return Boundary(-0.1, -0.1, 0.1, 0.1);
+    }
 }
 
 
@@ -191,12 +205,16 @@ GNERouteRef::getAttribute(SumoXMLAttr key) const {
     switch (key) {
         case SUMO_ATTR_ID:
             return getMicrosimID();
-        case GNE_ATTR_ROUTE_DISTRIBUTION:
-            return getParentDemandElements().front()->getID();
         case SUMO_ATTR_REFID:
             return getParentDemandElements().back()->getID();
         case SUMO_ATTR_PROB:
-            return toString(myProbability);
+            if (myProbability == INVALID_DOUBLE) {
+                return getParentDemandElements().at(1)->getAttribute(key);
+            } else {
+                return toString(myProbability);
+            }
+        case GNE_ATTR_DEFAULT_PROBABILITY:
+            return (myProbability == INVALID_DOUBLE) ? TRUE_STR : FALSE_STR;
         default:
             return getCommonAttribute(key);
     }
@@ -207,7 +225,11 @@ double
 GNERouteRef::getAttributeDouble(SumoXMLAttr key) const {
     switch (key) {
         case SUMO_ATTR_PROB:
-            return myProbability;
+            if (myProbability == INVALID_DOUBLE) {
+                return getParentDemandElements().at(1)->getAttributeDouble(key);
+            } else {
+                return myProbability;
+            }
         default:
             return getCommonAttributeDouble(key);
     }
@@ -223,7 +245,6 @@ GNERouteRef::getAttributePosition(SumoXMLAttr key) const {
 bool
 GNERouteRef::isAttributeEnabled(SumoXMLAttr key) const {
     switch (key) {
-        case GNE_ATTR_ROUTE_DISTRIBUTION:
         case SUMO_ATTR_REFID:
             return false;
         default:
@@ -262,6 +283,15 @@ GNERouteRef::isValid(SumoXMLAttr key, const std::string& value) {
     }
 }
 
+bool
+GNERouteRef::isAttributeComputed(SumoXMLAttr key) const {
+    switch (key) {
+        case SUMO_ATTR_PROB:
+            return myProbability == INVALID_DOUBLE;
+        default:
+            return false;
+    }
+}
 
 std::string
 GNERouteRef::getPopUpID() const {
@@ -271,7 +301,7 @@ GNERouteRef::getPopUpID() const {
 
 std::string
 GNERouteRef::getHierarchyName() const {
-    return TLF("%: % -> %", myTagProperty->getTagStr(), getAttribute(GNE_ATTR_ROUTE_DISTRIBUTION), getAttribute(SUMO_ATTR_REFID));
+    return TLF("%: %, %", myTagProperty->getTagStr(), getParentDemandElements().back()->getID(), getAttribute(SUMO_ATTR_PROB));
 }
 
 // ===========================================================================
@@ -283,7 +313,7 @@ GNERouteRef::setAttribute(SumoXMLAttr key, const std::string& value) {
     switch (key) {
         case SUMO_ATTR_PROB:
             if (value.empty()) {
-                myProbability = myTagProperty->getDefaultDoubleValue(key);
+                myProbability = INVALID_DOUBLE;
             } else {
                 myProbability = parse<double>(value);
             }

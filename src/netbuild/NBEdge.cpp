@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -3222,7 +3222,7 @@ void NBEdge::recheckOpposite(const NBEdgeCont& ec, bool fixOppositeLengths) {
             getLaneStruct(leftmostLane).oppositeID = "";
         } else {
             if (oppEdge->getFromNode() != getToNode() || oppEdge->getToNode() != getFromNode()) {
-                WRITE_ERRORF(TL("Opposite lane '%' does not reverse-connect the same nodes as edge '%'!"), oppositeID, getID());
+                WRITE_WARNINGF(TL("Opposite lane '%' does not reverse-connect the same nodes as edge '%'!"), oppositeID, getID());
                 getLaneStruct(getNumLanes() - 1).oppositeID = "";
             } else {
                 if (oppEdge->getLaneID(oppEdge->getNumLanes() - 1) != oppositeID) {

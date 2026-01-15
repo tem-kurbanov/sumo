@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -371,8 +371,31 @@ MSRailSignal::initDriveWays(const SUMOVehicle* ego, bool update) {
     if (endIndex < 0) {
         endIndex = (int)edges.size() - 1;
     }
-    const int departIndex = ego->getParameter().departEdge;
-    MSDriveWay* prev = const_cast<MSDriveWay*>(MSDriveWay::getDepartureDriveway(ego, true));
+    int departIndex = ego->getParameter().departEdge;
+    MSDriveWay* prev = nullptr;
+    if (update && ego->hasDeparted()) {
+        // find last rail signal on the route and obtain the driveway
+        const MSEdge* next = ego->getEdge();
+        for (int i = ego->getRoutePosition() - 1; i > departIndex; i--) {
+            const MSEdge* e = ego->getRoute().getEdges()[i];
+            if (e->getToJunction()->getType() == SumoXMLNodeType::RAIL_SIGNAL) {
+                const MSLink* link = e->getLanes().front()->getLinkTo(next->getLanes().front());
+                //std::cout << SIMTIME << " veh=" << ego->getID() << " rp=" << ego->getRoutePosition()
+                //    << " i=" << i << " e=" << e->getID() << " next=" << next->getID() << " link=" << (link == nullptr ? "NUL" : link->getDescription()) << "\n";
+                if (link != nullptr && link->isTLSControlled()) {
+                    MSRailSignal* rs = const_cast<MSRailSignal*>(dynamic_cast<const MSRailSignal*>(link->getTLLogic()));
+                    LinkInfo& li = rs->myLinkInfos[link->getTLIndex()];
+                    prev = &li.getDriveWay(ego, i);
+                    departIndex = ego->getRoutePosition();
+                    break;
+                }
+            }
+            next = e;
+        }
+    }
+    if (prev == nullptr) {
+        prev = const_cast<MSDriveWay*>(MSDriveWay::getDepartureDriveway(ego, true));
+    }
     if (update && ego->hasDeparted()) {
         MSBaseVehicle* veh = dynamic_cast<MSBaseVehicle*>(const_cast<SUMOVehicle*>(ego));
         if (!prev->hasTrain(veh) && prev->notifyEnter(*veh, prev->NOTIFICATION_REROUTE, nullptr) && !veh->hasReminder(prev)) {
@@ -421,7 +444,6 @@ MSRailSignal::initDriveWays(const SUMOVehicle* ego, bool update) {
             }
         }
     }
-    MSDriveWay::getDepartureDriveway(ego, true);
 }
 
 
@@ -479,7 +501,7 @@ MSRailSignal::LinkInfo::reset() {
     myLastRerouteVehicle = nullptr;
     myDriveways.clear();
     myControlled = isRailwayOrShared(myLink->getViaLaneOrLane()->getPermissions())
-        && isRailwayOrShared(myLink->getLane()->getPermissions());
+                   && isRailwayOrShared(myLink->getLane()->getPermissions());
 }
 
 
@@ -570,10 +592,10 @@ MSRailSignal::LinkInfo::reroute(SUMOVehicle* veh, const MSEdgeVector& occupied) 
             std::cout << SIMTIME << " reroute veh=" << veh->getID() << " rs=" << getID() << " occupied=" << toString(occupied) << "\n";
         }
 #endif
-        std::map<const MSEdge*, double> prohibited;
+        MSRoutingEngine::Prohibitions prohibited;
         for (MSEdge* e : occupied) {
             // indefinite occupation because vehicles might be in deadlock on their current routes
-            prohibited[e] = -1;
+            prohibited[e].end = std::numeric_limits<double>::max();
         }
         MSRoutingEngine::reroute(*veh, now, "railSignal:" + getID(), false, true, prohibited);
 #ifdef DEBUG_REROUTE

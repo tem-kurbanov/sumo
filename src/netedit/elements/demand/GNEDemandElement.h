@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -56,23 +56,24 @@ public:
         NO_PLANS                    // Person or container doesn't have a plan
     };
 
-    /**@brief Constructor
-     * @param[in] id Gl-id of the demand element element (Must be unique)
-     * @param[in] net pointer to GNEViewNet of this demand element element belongs
-     * @param[in] filename file in which this AttributeCarrier is stored
+    /**@brief Constructor for templates
      * @param[in] tag Type of xml tag that define the demand element element (SUMO_TAG_ROUTE, SUMO_TAG_VEHICLE, etc...)
-     * @param[in] pathOptions path options
      */
-    GNEDemandElement(const std::string& id, GNENet* net, const std::string& filename,
-                     SumoXMLTag tag, const GNEPathElement::Options pathOptions);
+    GNEDemandElement(GNENet* net, SumoXMLTag tag);
 
     /**@brief Constructor
-     * @param[in] demandElementParent pointer to parent demand element pointer (used to generate an ID)
-     * @param[in] net pointer to GNEViewNet of this demand element element belongs
-     * @param[in] tag Type of xml tag that define the demand element element (SUMO_TAG_ROUTE, SUMO_TAG_VEHICLE, etc...)
-     * @param[in] pathOptions path options
+     * @param[in] id Gl-id of the demand element element (Must be unique)
+     * @param[in] tag SUMO Tag assigned to this type of object
+     * @param[in] net GNENet in which this AttributeCarrier is stored
+     * @param[in] fileBucket bucket in which this AttributeCarrier is stored
      */
-    GNEDemandElement(GNEDemandElement* demandElementParent, SumoXMLTag tag, const GNEPathElement::Options pathOptions);
+    GNEDemandElement(const std::string& id, GNENet* net, SumoXMLTag tag, FileBucket* fileBucket);
+
+    /**@brief Constructor
+     * @param[in] demandElementParent pointer to parent demand element pointer
+     * @param[in] tag Type of xml tag that define the demand element element (SUMO_TAG_ROUTE, SUMO_TAG_VEHICLE, etc...)
+     */
+    GNEDemandElement(GNEDemandElement* demandElementParent, SumoXMLTag tag);
 
     /// @brief Destructor
     virtual ~GNEDemandElement();
@@ -90,6 +91,12 @@ public:
     const GUIGlObject* getGUIGlObject() const override;
 
     /// @}
+
+    /// @brief get reference to fileBucket in which save this AC
+    FileBucket* getFileBucket() const override;
+
+    /// @brief change filebucket manually (used only during calibratorFlows creation)
+    void changeFileBucket(FileBucket* fileBucket);
 
     /// @brief get demand element geometry (stacked)
     const GUIGeometry& getDemandElementGeometry();
@@ -198,7 +205,7 @@ public:
      * @return The built popup-menu
      * @see GUIGlObject::getPopUpMenu
      */
-    virtual GUIGLObjectPopupMenu* getPopUpMenu(GUIMainWindow& app, GUISUMOAbstractView& parent);
+    virtual GUIGLObjectPopupMenu* getPopUpMenu(GUIMainWindow& app, GUISUMOAbstractView& parent) override;
 
     /**@brief Returns an own parameter window
      *
@@ -207,22 +214,22 @@ public:
      * @return The built parameter window
      * @see GUIGlObject::getParameterWindow
      */
-    GUIParameterTableWindow* getParameterWindow(GUIMainWindow& app, GUISUMOAbstractView& parent);
+    GUIParameterTableWindow* getParameterWindow(GUIMainWindow& app, GUISUMOAbstractView& parent) override;
 
     /// @brief check if element is locked
-    bool isGLObjectLocked() const;
+    bool isGLObjectLocked() const override;
 
     /// @brief mark element as front element
-    void markAsFrontElement();
+    void markAsFrontElement() override;
 
     /// @brief delete element
-    void deleteGLObject();
+    void deleteGLObject() override;
 
     /// @brief select element
-    void selectGLObject();
+    void selectGLObject() override;
 
     /// @brief update GLObject (geometry, ID, etc.)
-    void updateGLObject();
+    void updateGLObject() override;
 
     /// @}
 
@@ -247,7 +254,7 @@ public:
     /// @{
 
     /// @brief check if path element is selected
-    bool isPathElementSelected() const;
+    bool isPathElementSelected() const override;
 
     /// @}
 
@@ -262,7 +269,7 @@ protected:
     GUIGeometry mySpreadGeometry;
 
     /// @brief stacked label number
-    int myStackedLabelNumber;
+    int myStackedLabelNumber = 0;
 
     /// @brief check if a new demand element ID is valid
     bool isValidDemandElementID(const std::string& value) const;
@@ -314,7 +321,7 @@ protected:
     void replaceLastParentAdditional(SumoXMLTag tag, const std::string& value);
 
     /// @brief replace demand element parent
-    void replaceDemandElementParent(SumoXMLTag tag, const std::string& value, const int parentIndex);
+    void replaceDemandElementParent(const std::vector<SumoXMLTag> tags, const std::string& value, const int parentIndex);
 
     /// @}
 

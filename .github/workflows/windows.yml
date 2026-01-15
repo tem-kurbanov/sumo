@@ -30,7 +30,7 @@ jobs:
 
     steps:
     - name: Cloning SUMO
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
         filter: tree:0
@@ -38,7 +38,7 @@ jobs:
         ref: ${{ github.ref }}
 
     - name: Cloning SUMO Libraries
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         repository: DLR-TS/SUMOLibraries
         path: SUMOLibraries
@@ -65,9 +65,7 @@ jobs:
 
     - name: Setup Python dependencies
       # the pipdeptree below is just for debugging but often comes handy so keep it enabled
-      # py seems to refer to a different python, which is used by texttest's collate script (parquet2csv)
       run: |
-        py -m pip install -r tools/req_ci.txt -r tools/requirements.txt
         python -m pip install -r tools/req_ci.txt -r tools/requirements.txt texttest pipdeptree
         pipdeptree
 
@@ -94,7 +92,7 @@ jobs:
       run: cmake --build build_msvc --config Release --target traas
 
     - name: Uploading artifacts (SUMO binaries)
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: windows-${{ matrix.build_type }}-binaries
         path: bin
@@ -153,7 +151,7 @@ jobs:
 
     - name: Uploading test results
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: texttesttmp-${{ matrix.build_type }}
         path: D:/texttest/tt.zip

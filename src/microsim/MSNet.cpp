@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -144,6 +144,7 @@ const std::string MSNet::STAGE_INSERTIONS("insertion");
 const std::string MSNet::STAGE_REMOTECONTROL("remoteControl");
 
 const NamedObjectCont<MSStoppingPlace*> MSNet::myEmptyStoppingPlaceCont;
+const std::vector<MSStoppingPlace*> MSNet::myEmptyStoppingPlaceVector;
 
 // ===========================================================================
 // static member method definitions
@@ -665,7 +666,7 @@ MSNet::writeStatistics(const SUMOTime start, const long now) const {
 
 
 void
-MSNet::writeSummaryOutput() {
+MSNet::writeSummaryOutput(bool finalStep) {
     // summary output
     const OptionsCont& oc = OptionsCont::getOptions();
     const bool hasOutput = oc.isSet("summary-output");
@@ -673,7 +674,9 @@ MSNet::writeSummaryOutput() {
     if (hasOutput || hasPersonOutput) {
         const SUMOTime period = string2time(oc.getString("summary-output.period"));
         const SUMOTime begin = string2time(oc.getString("begin"));
-        if (period > 0 && (myStep - begin) % period != 0) {
+        if ((period > 0 && (myStep - begin) % period != 0 && !finalStep)
+                // it's the final step but we already wrote output
+                || (finalStep && (period <= 0 || (myStep - begin) % period == 0))) {
             return;
         }
     }
@@ -700,6 +703,7 @@ MSNet::writeSummaryOutput() {
         std::pair<double, double> meanSpeed = myVehicleControl->getVehicleMeanSpeeds();
         od.writeAttr("meanSpeed", meanSpeed.first);
         od.writeAttr("meanSpeedRelative", meanSpeed.second);
+        od.writeAttr("discarded", myVehicleControl->getDiscardedVehicleNo());
         if (myLogExecutionTime) {
             od.writeAttr("duration", mySimStepDuration);
         }
@@ -720,6 +724,7 @@ MSNet::writeSummaryOutput() {
         od.writeAttr("ended", pc.getEndedNumber());
         od.writeAttr("arrived", pc.getArrivedNumber());
         od.writeAttr("teleports", pc.getTeleportCount());
+        od.writeAttr("discarded", pc.getDiscardedNumber());
         if (myLogExecutionTime) {
             od.writeAttr("duration", mySimStepDuration);
         }
@@ -764,6 +769,8 @@ MSNet::closeSimulation(SUMOTime start, const std::string& reason) {
     if (OptionsCont::getOptions().isSet("statistic-output")) {
         writeStatistics(start, now);
     }
+    // maybe write a final line of output if reporting is periodic
+    writeSummaryOutput(true);
 }
 
 
@@ -1434,8 +1441,15 @@ MSNet::removeOutdatedCollisions() {
 
 
 bool
-MSNet::addStoppingPlace(const SumoXMLTag category, MSStoppingPlace* stop) {
-    return myStoppingPlaces[category == SUMO_TAG_TRAIN_STOP ? SUMO_TAG_BUS_STOP : category].add(stop->getID(), stop);
+MSNet::addStoppingPlace(SumoXMLTag category, MSStoppingPlace* stop) {
+    if (category == SUMO_TAG_TRAIN_STOP) {
+        category = SUMO_TAG_BUS_STOP;
+    }
+    const bool isNew = myStoppingPlaces[category].add(stop->getID(), stop);
+    if (isNew && stop->getMyName() != "") {
+        myNamedStoppingPlaces[category][stop->getMyName()].push_back(stop);
+    }
+    return isNew;
 }
 
 
@@ -1481,6 +1495,22 @@ MSNet::getStoppingPlaceID(const MSLane* lane, const double pos, const SumoXMLTag
         }
     }
     return "";
+}
+
+
+const std::vector<MSStoppingPlace*>&
+MSNet::getStoppingPlaceAlternatives(const std::string& name, SumoXMLTag category) const {
+    if (category == SUMO_TAG_TRAIN_STOP) {
+        category = SUMO_TAG_BUS_STOP;
+    }
+    auto it = myNamedStoppingPlaces.find(category);
+    if (it != myNamedStoppingPlaces.end()) {
+        auto it2 = it->second.find(name);
+        if (it2 != it->second.end()) {
+            return it2->second;
+        }
+    }
+    return myEmptyStoppingPlaceVector;
 }
 
 

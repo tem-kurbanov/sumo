@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -828,8 +828,8 @@ MSLane::checkFailure(const MSVehicle* aVehicle, double& speed, double& dist, con
                 double emergencyBrakeGap = 0.5 * speed * speed / aVehicle->getCarFollowModel().getEmergencyDecel();
                 if (emergencyBrakeGap <= dist) {
                     // Vehicle may stop in time with emergency deceleration
-                    // stil, emit a warning
-                    WRITE_WARNINGF(TL("Vehicle '%' is inserted in emergency situation."), aVehicle->getID());
+                    // still, emit a warning
+                    WRITE_WARNINGF(TL("Vehicle '%' is inserted in an emergency situation, time=%."), aVehicle->getID(), time2string(SIMSTEP));
                     return false;
                 }
             }
@@ -853,8 +853,8 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
     int insertionChecks = aVehicle->getInsertionChecks();
     if (pos < 0 || pos > myLength) {
         // we may not start there
-        WRITE_WARNINGF(TL("Invalid departPos % given for vehicle '%'. Inserting at lane end instead."),
-                       pos, aVehicle->getID());
+        WRITE_WARNINGF(TL("Invalid departPos % given for vehicle '%', time=%. Inserting at lane end instead."),
+                       pos, aVehicle->getID(), time2string(SIMSTEP));
         pos = myLength;
     }
 
@@ -881,7 +881,8 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
     const bool isRail = aVehicle->isRail();
     if (isRail && insertionChecks != (int)InsertionCheck::NONE
             && aVehicle->getParameter().departProcedure != DepartDefinition::SPLIT
-            && MSRailSignalControl::isSignalized(aVehicle->getVClass())) {
+            && MSRailSignalControl::isSignalized(aVehicle->getVClass())
+            && isRailwayOrShared(myPermissions)) {
         const MSDriveWay* dw = MSDriveWay::getDepartureDriveway(aVehicle);
         MSEdgeVector occupied;
         if (dw->foeDriveWayOccupied(false, aVehicle, occupied)) {
@@ -946,7 +947,6 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
                       << " patchSpeed=" << patchSpeed
                       << " speed=" << speed
                       << " nspeed=" << nspeed
-                      << " nextLane=" << nextLane->getID()
                       << " leaders=" << leaders.toString()
                       << " failed (@700)!\n";
         }
@@ -1014,6 +1014,7 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
         nextLane = (*link)->getViaLaneOrLane();
         if (!(*link)->opened(arrivalTime, speed, speed, aVehicle->getVehicleType().getLength(), aVehicle->getImpatience(),
                              cfModel.getMaxDecel(), 0, posLat, nullptr, false, aVehicle)
+                || (*link)->railSignalWasPassed()
                 || !(*link)->havePriority()) {
             // have to stop at junction
             std::string errorMsg = "";
@@ -1123,13 +1124,13 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
             // check leader on next lane
             const MSLeaderInfo nextLeaders = nextLane->getLastVehicleInformation(aVehicle, 0, 0);
             if (nextLeaders.hasVehicles()) {
-                const double nspeed = nextLane->safeInsertionSpeed(aVehicle, seen, nextLeaders, speed);
+                const double nextLaneSpeed = nextLane->safeInsertionSpeed(aVehicle, seen, nextLeaders, speed);
 #ifdef DEBUG_INSERTION
                 if (DEBUG_COND2(aVehicle) || DEBUG_COND) {
-                    std::cout << SIMTIME << " leader on lane '" << nextLane->getID() << "': " << nextLeaders.toString() << " nspeed=" << nspeed << "\n";
+                    std::cout << SIMTIME << " leader on lane '" << nextLane->getID() << "': " << nextLeaders.toString() << " nspeed=" << nextLaneSpeed << "\n";
                 }
 #endif
-                if (nspeed == INVALID_SPEED || checkFailure(aVehicle, speed, dist, nspeed, patchSpeed, "", InsertionCheck::LEADER_GAP)) {
+                if (nextLaneSpeed == INVALID_SPEED || checkFailure(aVehicle, speed, dist, nextLaneSpeed, patchSpeed, "", InsertionCheck::LEADER_GAP)) {
                     // we may not drive with the given velocity - we crash into the leader
 #ifdef DEBUG_INSERTION
                     if (DEBUG_COND2(aVehicle) || DEBUG_COND) {
@@ -1139,7 +1140,7 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
                                   << " posLat=" << posLat
                                   << " patchSpeed=" << patchSpeed
                                   << " speed=" << speed
-                                  << " nspeed=" << nspeed
+                                  << " nspeed=" << nextLaneSpeed
                                   << " nextLane=" << nextLane->getID()
                                   << " lead=" << nextLeaders.toString()
                                   << " failed (@641)!\n";
@@ -1152,19 +1153,19 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
                 return false;
             }
             // check next lane's maximum velocity
-            const double nspeed = cfModel.freeSpeed(aVehicle, speed, seen, nextLane->getVehicleMaxSpeed(aVehicle), true, MSCFModel::CalcReason::FUTURE);
-            if (nspeed < speed) {
+            const double freeSpeed = cfModel.freeSpeed(aVehicle, speed, seen, nextLane->getVehicleMaxSpeed(aVehicle), true, MSCFModel::CalcReason::FUTURE);
+            if (freeSpeed < speed) {
                 if (patchSpeed || aVehicle->getParameter().departSpeedProcedure != DepartSpeedDefinition::GIVEN) {
-                    speed = nspeed;
+                    speed = freeSpeed;
                     dist = cfModel.brakeGap(speed) + aVehicle->getVehicleType().getMinGap();
                 } else {
                     if ((insertionChecks & (int)InsertionCheck::SPEED_LIMIT) != 0) {
                         if (!MSGlobals::gCheckRoutes) {
-                            WRITE_WARNINGF(TL("Vehicle '%' is inserted too fast and will violate the speed limit on a lane '%'."),
-                                           aVehicle->getID(), nextLane->getID());
+                            WRITE_WARNINGF(TL("Vehicle '%' is inserted too fast and will violate the speed limit on a lane '%', time=%."),
+                                           aVehicle->getID(), nextLane->getID(), time2string(SIMSTEP));
                         } else {
                             // we may not drive with the given velocity - we would be too fast on the next lane
-                            WRITE_ERRORF(TL("Vehicle '%' will not be able to depart using the given velocity (slow lane ahead)!"), aVehicle->getID());
+                            WRITE_ERRORF(TL("Vehicle '%' will not be able to depart using the given velocity (slow lane ahead), time=%."), aVehicle->getID(), time2string(SIMSTEP));
                             MSNet::getInstance()->getInsertionControl().descheduleDeparture(aVehicle);
                             return false;
                         }
@@ -1370,7 +1371,6 @@ MSLane::isInsertionSuccess(MSVehicle* aVehicle,
                   << "\n myVehicles=" << toString(myVehicles)
                   << " myPartial=" << toString(myPartialVehicles)
                   << " myManeuverReservations=" << toString(myManeuverReservations)
-                  << "\n leaders=" << nextLeaders.toString()
                   << "\n success!\n";
     }
 #endif
@@ -1923,9 +1923,9 @@ MSLane::detectPedestrianJunctionCollision(const MSVehicle* collider, const Posit
             if (colliderBoundary.overlapsWith((*it_p)->getBoundingBox())
                     && collider->getBoundingPoly().overlapsWith((*it_p)->getBoundingBox())) {
                 std::string collisionType = "junctionPedestrian";
-                if (foeLane->getEdge().isCrossing()) {
+                if (foeLane->isCrossing()) {
                     collisionType = "crossing";
-                } else if (foeLane->getEdge().isWalkingArea()) {
+                } else if (foeLane->isWalkingArea()) {
                     collisionType = "walkingarea";
                 }
                 handleIntermodalCollisionBetween(timestep, stage, collider, *it_p, 0, collisionType, toRemove, toTeleport);
@@ -2643,6 +2643,13 @@ bool
 MSLane::isCrossing() const {
     return myEdge->isCrossing();
 }
+
+
+bool
+MSLane::isPriorityCrossing() const {
+    return isCrossing() && getIncomingLanes()[0].viaLink->getOffState() == LINKSTATE_MAJOR;
+}
+
 
 bool
 MSLane::isWalkingArea() const {
@@ -3376,7 +3383,7 @@ MSLane::enteredByLaneChange(MSVehicle* v) {
 int
 MSLane::getCrossingIndex() const {
     for (std::vector<MSLink*>::const_iterator i = myLinks.begin(); i != myLinks.end(); ++i) {
-        if ((*i)->getLane()->getEdge().isCrossing()) {
+        if ((*i)->getLane()->isCrossing()) {
             return (int)(i - myLinks.begin());
         }
     }
@@ -4728,6 +4735,18 @@ MSLane::getSpaceTillLastStanding(const MSVehicle* ego, bool& foundStopped) const
 bool
 MSLane::allowsVehicleClass(SUMOVehicleClass vclass, int routingMode) const {
     return (((routingMode & libsumo::ROUTING_MODE_IGNORE_TRANSIENT_PERMISSIONS) ? myOriginalPermissions : myPermissions) & vclass) == vclass;
+}
+
+
+const MSJunction*
+MSLane::getFromJunction() const {
+    return myEdge->getFromJunction();
+}
+
+
+const MSJunction*
+MSLane::getToJunction() const {
+    return myEdge->getToJunction();
 }
 
 /****************************************************************************/

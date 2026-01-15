@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -43,7 +43,7 @@ public:
     /**@brief Constructor using edge
      * @param[in] id The storage of gl-ids to get the one for this lane representation from
      * @param[in] net pointer to GNENet of this additional element belongs
-     * @param[in] filename file in which this element is stored
+     * @param[in] fileBucket file in which this element is stored
      * @param[in] edge Edge of this calibrator belongs
      * @param[in] pos position of the calibrator on the edge (Currently not used)
      * @param[in] frequency the aggregation interval in which to calibrate the flows
@@ -53,13 +53,13 @@ public:
      * @param[in] vTypes space separated list of vehicle type ids to consider
      * @param[in] parameters generic parameters
      */
-    GNECalibrator(const std::string& id, GNENet* net, const std::string& filename, GNEEdge* edge, double pos, SUMOTime frequency, const std::string& name,
+    GNECalibrator(const std::string& id, GNENet* net, FileBucket* fileBucket, GNEEdge* edge, double pos, SUMOTime frequency, const std::string& name,
                   const std::string& output, const double jamThreshold, const std::vector<std::string>& vTypes, const Parameterised::Map& parameters);
 
     /**@brief Constructor using edge and routeProbe
      * @param[in] id The storage of gl-ids to get the one for this lane representation from
      * @param[in] net pointer to GNENet of this additional element belongs
-     * @param[in] filename file in which this element is stored
+     * @param[in] fileBucket file in which this element is stored
      * @param[in] edge Edge of this calibrator belongs
      * @param[in] pos position of the calibrator on the edge (Currently not used)
      * @param[in] frequency the aggregation interval in which to calibrate the flows
@@ -70,13 +70,13 @@ public:
      * @param[in] vTypes space separated list of vehicle type ids to consider
      * @param[in] parameters generic parameters
      */
-    GNECalibrator(const std::string& id, GNENet* net, const std::string& filename, GNEEdge* edge, double pos, SUMOTime frequency, const std::string& name,
+    GNECalibrator(const std::string& id, GNENet* net, FileBucket* fileBucket, GNEEdge* edge, double pos, SUMOTime frequency, const std::string& name,
                   const std::string& output, GNEAdditional* routeProbe, const double jamThreshold, const std::vector<std::string>& vTypes, const Parameterised::Map& parameters);
 
     /**@brief Constructor using lane
      * @param[in] id The storage of gl-ids to get the one for this lane representation from
      * @param[in] net pointer to GNENet of this additional element belongs
-     * @param[in] filename file in which this element is stored
+     * @param[in] fileBucket file in which this element is stored
      * @param[in] lane Lane of this calibrator belongs
      * @param[in] pos position of the calibrator on the edge (Currently not used)
      * @param[in] frequency the aggregation interval in which to calibrate the flows
@@ -86,13 +86,13 @@ public:
      * @param[in] vTypes space separated list of vehicle type ids to consider
      * @param[in] parameters generic parameters
      */
-    GNECalibrator(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane, double pos, SUMOTime frequency, const std::string& name,
+    GNECalibrator(const std::string& id, GNENet* net, FileBucket* fileBucket, GNELane* lane, double pos, SUMOTime frequency, const std::string& name,
                   const std::string& output, const double jamThreshold, const std::vector<std::string>& vTypes, const Parameterised::Map& parameters);
 
     /**@brief Constructor using lane and routeProbe
      * @param[in] id The storage of gl-ids to get the one for this lane representation from
      * @param[in] net pointer to GNENet of this additional element belongs
-     * @param[in] filename file in which this element is stored
+     * @param[in] fileBucket file in which this element is stored
      * @param[in] lane Lane of this calibrator belongs
      * @param[in] pos position of the calibrator on the edge (Currently not used)
      * @param[in] frequency the aggregation interval in which to calibrate the flows
@@ -103,7 +103,7 @@ public:
      * @param[in] vTypes space separated list of vehicle type ids to consider
      * @param[in] parameters generic parameters
      */
-    GNECalibrator(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane, double pos, SUMOTime frequency, const std::string& name,
+    GNECalibrator(const std::string& id, GNENet* net, FileBucket* fileBucket, GNELane* lane, double pos, SUMOTime frequency, const std::string& name,
                   const std::string& output, GNEAdditional* routeProbe, const double jamThreshold, const std::vector<std::string>& vTypes, const Parameterised::Map& parameters);
 
     /// @brief Destructor
@@ -129,16 +129,16 @@ public:
     /**@brief write additional element into a xml file
     * @param[in] device device in which write parameters of additional element
     */
-    void writeAdditional(OutputDevice& device) const;
+    void writeAdditional(OutputDevice& device) const override;
 
     /// @brief check if current additional is valid to be written into XML (must be reimplemented in all detector children)
-    bool isAdditionalValid() const;
+    bool isAdditionalValid() const override;
 
     /// @brief return a string with the current additional problem (must be reimplemented in all detector children)
-    std::string getAdditionalProblem() const;
+    std::string getAdditionalProblem() const override;
 
     /// @brief fix additional problem (must be reimplemented in all detector children)
-    void fixAdditionalProblem();
+    void fixAdditionalProblem() override;
 
     /// @}
 
@@ -151,7 +151,7 @@ public:
     /// @}
 
     /// @brief open Calibrator Dialog
-    void openAdditionalDialog();
+    void openAdditionalDialog(FXWindow* restoringFocusWindow) override;
 
     /// @name Functions related with geometry of element
     /// @{
@@ -160,13 +160,13 @@ public:
     void updateGeometry() override;
 
     /// @brief Returns position of additional in view
-    Position getPositionInView() const;
+    Position getPositionInView() const override;
 
     /// @brief update centering boundary (implies change in RTREE)
-    void updateCenteringBoundary(const bool updateGrid);
+    void updateCenteringBoundary(const bool updateGrid) override;
 
     /// @brief split geometry
-    void splitEdgeGeometry(const double splitPosition, const GNENetworkElement* originalElement, const GNENetworkElement* newElement, GNEUndoList* undoList);
+    void splitEdgeGeometry(const double splitPosition, const GNENetworkElement* originalElement, const GNENetworkElement* newElement, GNEUndoList* undoList) override;
 
     /// @}
 
@@ -176,13 +176,13 @@ public:
     /**@brief Returns the name of the parent object
      * @return This object's parent id
      */
-    std::string getParentName() const;
+    std::string getParentName() const override;
 
     /**@brief Draws the object
      * @param[in] s The settings for the current view (may influence drawing)
      * @see GUIGlObject::drawGL
      */
-    void drawGL(const GUIVisualizationSettings& s) const;
+    void drawGL(const GUIVisualizationSettings& s) const override;
 
     /// @}
 

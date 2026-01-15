@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -304,21 +304,25 @@ struct GNEViewNetHelper {
     /// @brief class used for group front elements
     class MarkFrontElements {
 
+        /// @brief only GNEAttributeCarrier have access to mark/unmarkAC
+        friend class GNEAttributeCarrier;
+
     public:
         /// @brief constructor
         MarkFrontElements();
 
+        /// @brief get hash table with all fronted ACs
+        const std::unordered_set<GNEAttributeCarrier*>& getACs() const;
+
+        /// @brief unmark all ACs
+        void unmarkAll();
+
+    protected:
         /// @brief mark AC as drawing front
         void markAC(GNEAttributeCarrier* AC);
 
         /// @brief unmark AC for drawing front
         void unmarkAC(GNEAttributeCarrier* AC);
-
-        /// @brief unmark all ACs
-        void unmarkAll();
-
-        /// @brief get hash table with all fronted ACs
-        const std::unordered_set<GNEAttributeCarrier*>& getACs() const;
 
     private:
         /// @brief hash table with all marked ACs (we use a set to make deletion of massive elements more quickly)

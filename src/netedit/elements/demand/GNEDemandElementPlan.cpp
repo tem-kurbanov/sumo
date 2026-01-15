@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -18,11 +18,12 @@
 // An auxiliar, asbtract class for plan elements
 /****************************************************************************/
 
+#include <netedit/changes/GNEChange_Attribute.h>
 #include <netedit/GNENet.h>
 #include <netedit/GNESegment.h>
-#include <netedit/changes/GNEChange_Attribute.h>
 #include <utils/gui/div/GLHelper.h>
 #include <utils/gui/div/GUIDesigns.h>
+#include <utils/xml/NamespaceIDs.h>
 
 #include "GNEDemandElementPlan.h"
 #include "GNERoute.h"
@@ -1319,24 +1320,13 @@ GNEDemandElementPlan::drawEndPosition(const GUIVisualizationSettings& /* s */, c
 }
 
 
-bool
+void
 GNEDemandElementPlan::replacePlanParent(const std::string& newParentID) {
-    std::vector<SumoXMLTag> tags;
     if (myPlanElement->myTagProperty->isPlanPerson()) {
-        tags.push_back(SUMO_TAG_PERSON);
-        tags.push_back(SUMO_TAG_PERSONFLOW);
+        myPlanElement->replaceDemandElementParent(NamespaceIDs::persons, newParentID, 0);
     } else {
-        tags.push_back(SUMO_TAG_CONTAINER);
-        tags.push_back(SUMO_TAG_CONTAINERFLOW);
+        myPlanElement->replaceDemandElementParent(NamespaceIDs::containers, newParentID, 0);
     }
-    // search new parent and set it
-    for (const auto& tag : tags) {
-        if (myPlanElement->getNet()->getAttributeCarriers()->retrieveDemandElement(tag, newParentID, false) != nullptr) {
-            myPlanElement->replaceDemandElementParent(tag, newParentID, 0);
-            return true;
-        }
-    }
-    throw ProcessError("Invalid new parent ID");
 }
 
 /****************************************************************************/

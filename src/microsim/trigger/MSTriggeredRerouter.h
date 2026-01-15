@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -81,7 +81,7 @@ public:
     /** @brief Destructor */
     virtual ~MSTriggeredRerouter();
 
-    typedef std::map<const MSEdge*, double> Prohibitions;
+    typedef std::map<const MSEdge*, RouterProhibition> Prohibitions;
 
     /**
      * @struct OvertakeLocation
@@ -100,6 +100,8 @@ public:
         double sidingLength = 0;
         /// @brief The threshold in savings for triggering reroute
         double minSaving;
+        /// @brief whether the decision to use this siding should be deferred
+        bool defer;
     };
 
     /**
@@ -143,7 +145,12 @@ public:
         Prohibitions getClosed() const {
             Prohibitions v;
             for (const auto& settings : closed) {
-                v[settings.first] = settings.second.second;
+                // no permissions are changed but edges are forbidden for all during routing
+                v[settings.first].permissions = settings.second.first == SVCAll ? 0 : settings.second.first;
+                if (settings.second.second != -1) {
+                    // end time is known
+                    v[settings.first].end = STEPS2TIME(settings.second.second);
+                }
             }
             return v;
         }
@@ -264,10 +271,10 @@ public:
 
     /// @brief determine whether veh should switch from main to siding to be overtaken and return the overtaking vehicle or nullptr
     std::pair<const SUMOVehicle*, MSRailSignal*> overtakingTrain(
-            const SUMOVehicle& veh,
-            ConstMSEdgeVector::const_iterator mainStart,
-            const OvertakeLocation& oloc,
-            double& netSaving);
+        const SUMOVehicle& veh,
+        ConstMSEdgeVector::const_iterator mainStart,
+        const OvertakeLocation& oloc,
+        double& netSaving);
 
     /// @brief consider switching the location of the upcoming stop
     void checkStopSwitch(MSBaseVehicle& veh, const MSTriggeredRerouter::RerouteInterval* def);

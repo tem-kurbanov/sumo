@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -43,7 +43,7 @@ public:
     /**@brief Constructor for Single-Lane E2 detectors
      * @param[in] id The storage of gl-ids to get the one for this lane representation from
      * @param[in] net pointer to GNENet of this additional element belongs
-     * @param[in] filename file in which this element is stored
+     * @param[in] fileBucket file in which this element is stored
      * @param[in] lane Lane of this StoppingPlace belongs
      * @param[in] pos position of the detector on the lane
      * @param[in] length The length of the detector in meters.
@@ -61,7 +61,7 @@ public:
      * @param[in] show detector in sumo-gui
      * @param[in] parameters generic parameters
      */
-    GNELaneAreaDetector(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane, const double pos, const double length,
+    GNELaneAreaDetector(const std::string& id, GNENet* net, FileBucket* fileBucket, GNELane* lane, const double pos, const double length,
                         const SUMOTime freq, const std::string& trafficLight, const std::string& outputFilename, const std::vector<std::string>& vehicleTypes,
                         const std::vector<std::string>& nextEdges, const std::string& detectPersons, const std::string& name,
                         const SUMOTime timeThreshold, const double speedThreshold, const double jamThreshold, const bool friendlyPos,
@@ -70,7 +70,7 @@ public:
     /**@brief Constructor for Multi-Lane detectors
      * @param[in] id The storage of gl-ids to get the one for this lane representation from
      * @param[in] net pointer to GNENet of this additional element belongs
-     * @param[in] filename file in which this element is stored
+     * @param[in] fileBucket file in which this element is stored
      * @param[in] lanes vector of lanes Lane of this StoppingPlace belongs
      * @param[in] pos position of the detector on the first lane
      * @param[in] endPos position of the detector on the last lane
@@ -88,7 +88,7 @@ public:
      * @param[in] show detector in sumo-gui
      * @param[in] parameters generic parameters
      */
-    GNELaneAreaDetector(const std::string& id, GNENet* net, const std::string& filename, std::vector<GNELane*> lanes, const double pos, const double endPos,
+    GNELaneAreaDetector(const std::string& id, GNENet* net, FileBucket* fileBucket, std::vector<GNELane*> lanes, const double pos, const double endPos,
                         const SUMOTime freq, const std::string& trafficLight, const std::string& outputFilename, const std::vector<std::string>& vehicleTypes,
                         const std::vector<std::string>& nextEdges, const std::string& detectPersons, const std::string& name,
                         const SUMOTime timeThreshold, const double speedThreshold, const double jamThreshold, const bool friendlyPos,
@@ -114,16 +114,16 @@ public:
     /**@brief write additional element into a xml file
      * @param[in] device device in which write parameters of additional element
      */
-    void writeAdditional(OutputDevice& device) const;
+    void writeAdditional(OutputDevice& device) const override;
 
     /// @brief check if current additional is valid to be written into XML
-    bool isAdditionalValid() const;
+    bool isAdditionalValid() const override;
 
     /// @brief return a string with the current additional problem
-    std::string getAdditionalProblem() const;
+    std::string getAdditionalProblem() const override;
 
     /// @brief fix additional problem
-    void fixAdditionalProblem();
+    void fixAdditionalProblem() override;
 
     /// @}
 
@@ -137,7 +137,7 @@ public:
      * @param[in] s The settings for the current view (may influence drawing)
      * @see GUIGlObject::drawGL
      */
-    void drawGL(const GUIVisualizationSettings& s) const;
+    void drawGL(const GUIVisualizationSettings& s) const override;
 
     /// @}
 
@@ -145,21 +145,21 @@ public:
     /// @{
 
     /// @brief compute pathElement
-    void computePathElement();
+    void computePathElement() override;
 
     /**@brief Draws partial object over lane
      * @param[in] s The settings for the current view (may influence drawing)
      * @param[in] segment lane segment
      * @param[in] offsetFront front offset
      */
-    void drawLanePartialGL(const GUIVisualizationSettings& s, const GNESegment* segment, const double offsetFront) const;
+    void drawLanePartialGL(const GUIVisualizationSettings& s, const GNESegment* segment, const double offsetFront) const override;
 
     /**@brief Draws partial object over junction
      * @param[in] s The settings for the current view (may influence drawing)
      * @param[in] segment junction segment
      * @param[in] offsetFront front offset
      */
-    void drawJunctionPartialGL(const GUIVisualizationSettings& s, const GNESegment* segment, const double offsetFront) const;
+    void drawJunctionPartialGL(const GUIVisualizationSettings& s, const GNESegment* segment, const double offsetFront) const override;
 
     /// @}
 

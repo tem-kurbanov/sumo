@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -30,9 +30,9 @@ class AdditionalHandler : public CommonHandler {
 
 public:
     /**@brief Constructor
-     * @param[in] filename Name of the parsed file
+     * @param[in] bucket FileBucket in which place the element
      */
-    AdditionalHandler(const std::string& filename);
+    AdditionalHandler(FileBucket* fileBucket);
 
     /// @brief Destructor
     virtual ~AdditionalHandler();
@@ -45,9 +45,6 @@ public:
 
     /// @brief parse SumoBaseObject (it's called recursivelly)
     void parseSumoBaseObject(CommonXMLStructure::SumoBaseObject* obj);
-
-    /// @brief run post parser tasks
-    virtual bool postParserTasks() = 0;
 
     /// @name build functions
     /// @{
@@ -131,6 +128,7 @@ public:
      * @param[in] endPos End position of the charging Station on the lane
      * @param[in] name Name of charging station
      * @param[in] chargingPower power charged in every timeStep
+     * @param[in] totalPower max. power charged in every timeStep by all vehicles
      * @param[in] efficiency efficiency of the charge
      * @param[in] chargeInTransit enable or disable charge in transit
      * @param[in] chargeDelay delay in the charge
@@ -142,7 +140,7 @@ public:
      */
     virtual bool buildChargingStation(const CommonXMLStructure::SumoBaseObject* sumoBaseObject, const std::string& id, const std::string& laneID,
                                       const double startPos, const double endPos, const std::string& name, const double chargingPower,
-                                      const double efficiency, const bool chargeInTransit, const SUMOTime chargeDelay, const std::string& chargeType,
+                                      const double totalPower, const double efficiency, const bool chargeInTransit, const SUMOTime chargeDelay, const std::string& chargeType,
                                       const SUMOTime waitingTime, const bool friendlyPosition, const std::string& parkingAreaID,
                                       const Parameterised::Map& parameters) = 0;
 

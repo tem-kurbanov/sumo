@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2025-09-11T14:39:47.429013+01:00 by Eclipse SUMO marouter v1_24_0+0753-7ddc191931e
+<!-- generated on 2025-11-14T15:06:47.363899+01:00 by Eclipse SUMO marouter v1_25_0+0045-28a3daf62ee
 -->
 
 <marouterConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/marouterConfiguration.xsd">
@@ -105,6 +105,9 @@
         <!-- Prefix which is applied to all output files. The special string &apos;TIME&apos; is replaced by the current time. -->
         <output-prefix value="" type="STR"/>
 
+        <!-- Suffix which is applied to all output files. The special string &apos;TIME&apos; is replaced by the current time. -->
+        <output-suffix value="" type="STR"/>
+
         <!-- Defines the number of digits after the comma for floating point output -->
         <precision value="2" type="INT"/>
 
@@ -170,6 +173,9 @@
 
         <!-- Apply the given time penalty when computing routing costs for turnaround internal lanes -->
         <weights.turnaround-penalty value="5" type="FLOAT"/>
+
+        <!-- Apply the given time penalty when computing routing costs for train reversal. Negative values disable reversal -->
+        <weights.reversal-penalty value="60" type="FLOAT"/>
 
         <!-- Defines the time interval when aggregating single vehicle input; Defaults to one hour -->
         <aggregation-interval value="3600" type="TIME"/>

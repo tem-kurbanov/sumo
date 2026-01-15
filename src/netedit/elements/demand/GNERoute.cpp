@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -60,7 +60,7 @@ GNERoute::GNERoutePopupMenu::~GNERoutePopupMenu() {}
 long
 GNERoute::GNERoutePopupMenu::onCmdApplyDistance(FXObject*, FXSelector, void*) {
     GNERoute* route = static_cast<GNERoute*>(myObject);
-    GNEUndoList* undoList = route->myNet->getViewNet()->getUndoList();
+    GNEUndoList* undoList = route->myNet->getUndoList();
     undoList->begin(route, "apply distance along route");
     double dist = (route->getParentEdges().size() > 0) ? route->getParentEdges().front()->getNBEdge()->getDistance() : 0;
     for (GNEEdge* edge : route->getParentEdges()) {
@@ -76,13 +76,13 @@ GNERoute::GNERoutePopupMenu::onCmdApplyDistance(FXObject*, FXSelector, void*) {
 // ===========================================================================
 
 GNERoute::GNERoute(SumoXMLTag tag, GNENet* net) :
-    GNEDemandElement("", net, "", tag, GNEPathElement::Options::DEMAND_ELEMENT | GNEPathElement::Options::ROUTE) {
+    GNEDemandElement(net, tag) {
 }
 
 
 GNERoute::GNERoute(GNEAdditional* calibrator) :
-    GNEDemandElement(calibrator->getNet()->getAttributeCarriers()->generateDemandElementID(SUMO_TAG_ROUTE), calibrator->getNet(),
-                     calibrator->getFilename(), SUMO_TAG_ROUTE, GNEPathElement::Options::DEMAND_ELEMENT | GNEPathElement::Options::ROUTE) {
+    GNEDemandElement(calibrator->getNet()->getAttributeCarriers()->generateDemandElementID(SUMO_TAG_ROUTE),
+                     calibrator->getNet(), SUMO_TAG_ROUTE, calibrator->getFileBucket()) {
     // set parent edge
     if (calibrator->getParentEdges().size() > 0) {
         setParents<GNEEdge*>({calibrator->getParentEdges().front()});
@@ -95,8 +95,7 @@ GNERoute::GNERoute(GNEAdditional* calibrator) :
 
 
 GNERoute::GNERoute(const std::string& id, const GNEDemandElement* originalRoute) :
-    GNEDemandElement(id, originalRoute->getNet(), originalRoute->getFilename(), originalRoute->getTagProperty()->getTag(),
-                     originalRoute->getPathElementOptions()),
+    GNEDemandElement(id, originalRoute->getNet(), originalRoute->getTagProperty()->getTag(), originalRoute->getFileBucket()),
     Parameterised(originalRoute->getParameters()->getParametersMap()),
     myRepeat(parse<int>(originalRoute->getAttribute(SUMO_ATTR_REPEAT))),
     myCycleTime(string2time(originalRoute->getAttribute(SUMO_ATTR_REPEAT))),
@@ -108,7 +107,7 @@ GNERoute::GNERoute(const std::string& id, const GNEDemandElement* originalRoute)
 
 
 GNERoute::GNERoute(GNEVehicle* vehicleParent, const GNEDemandElement* originalRoute) :
-    GNEDemandElement(vehicleParent, originalRoute->getTagProperty()->getTag(), originalRoute->getPathElementOptions()),
+    GNEDemandElement(vehicleParent, originalRoute->getTagProperty()->getTag()),
     Parameterised(originalRoute->getParameters()->getParametersMap()),
     myRepeat(parse<int>(originalRoute->getAttribute(SUMO_ATTR_REPEAT))),
     myCycleTime(string2time(originalRoute->getAttribute(SUMO_ATTR_REPEAT))),
@@ -120,15 +119,15 @@ GNERoute::GNERoute(GNEVehicle* vehicleParent, const GNEDemandElement* originalRo
 }
 
 
-GNERoute::GNERoute(const std::string& id, GNENet* net, const std::string& filename, SUMOVehicleClass vClass,
+GNERoute::GNERoute(const std::string& id, GNENet* net, FileBucket* fileBucket, SUMOVehicleClass vClass,
                    const std::vector<GNEEdge*>& edges, const RGBColor& color, const int repeat,
-                   const SUMOTime cycleTime, const Parameterised::Map& parameters) :
-    GNEDemandElement(id, net, filename, SUMO_TAG_ROUTE,
-                     GNEPathElement::Options::DEMAND_ELEMENT | GNEPathElement::Options::ROUTE),
+                   const SUMOTime cycleTime, const double probability, const Parameterised::Map& parameters) :
+    GNEDemandElement(id, net, SUMO_TAG_ROUTE, fileBucket),
     Parameterised(parameters),
     myColor(color),
     myRepeat(repeat),
     myCycleTime(cycleTime),
+    myProbability(probability),
     myVClass(vClass) {
     // set parents
     setParents<GNEEdge*>(edges);
@@ -137,8 +136,7 @@ GNERoute::GNERoute(const std::string& id, GNENet* net, const std::string& filena
 
 GNERoute::GNERoute(GNEDemandElement* vehicleParent, const std::vector<GNEEdge*>& edges, const RGBColor& color,
                    const int repeat, const SUMOTime cycleTime, const Parameterised::Map& parameters) :
-    GNEDemandElement(vehicleParent, GNE_TAG_ROUTE_EMBEDDED,
-                     GNEPathElement::Options::DEMAND_ELEMENT | GNEPathElement::Options::ROUTE),
+    GNEDemandElement(vehicleParent, GNE_TAG_ROUTE_EMBEDDED),
     Parameterised(parameters),
     myColor(color),
     myRepeat(repeat),
@@ -211,15 +209,15 @@ GNERoute::writeDemandElement(OutputDevice& device) const {
     if (myCycleTime != myTagProperty->getDefaultTimeValue(SUMO_ATTR_CYCLETIME)) {
         device.writeAttr(SUMO_ATTR_CYCLETIME, time2string(myCycleTime));
     }
+    if (myTagProperty->hasAttribute(SUMO_ATTR_PROB) && (myProbability != myTagProperty->getDefaultDoubleValue(SUMO_ATTR_PROB))) {
+        device.writeAttr(SUMO_ATTR_PROB, toString(myProbability));
+    }
     // write probability if we have exactly one routeRef
     std::vector<GNEDemandElement*> refs;
     for (const auto& routeChild : getChildDemandElements()) {
         if (routeChild->getTagProperty()->getTag() == GNE_TAG_ROUTEREF) {
             refs.push_back(routeChild);
         }
-    }
-    if (refs.size() == 1) {
-        device.writeAttr(SUMO_ATTR_PROB, refs.front()->getAttribute(SUMO_ATTR_PROB));
     }
     // write sorted stops
     if (myTagProperty->getTag() == SUMO_TAG_ROUTE) {
@@ -267,7 +265,6 @@ GNERoute::isDemandElementValid() const {
     } else {
         return Problem::OK;
     }
-    return Problem::INVALID_ELEMENT;
 }
 
 
@@ -558,6 +555,8 @@ GNERoute::getAttribute(SumoXMLAttr key) const {
             return toString(myRepeat);
         case SUMO_ATTR_CYCLETIME:
             return time2string(myCycleTime);
+        case SUMO_ATTR_PROB:
+            return toString(myProbability);
         default:
             return getCommonAttribute(key);
     }
@@ -571,6 +570,8 @@ GNERoute::getAttributeDouble(SumoXMLAttr key) const {
             return 0;
         case SUMO_ATTR_ARRIVALPOS:
             return getParentEdges().back()->getChildLanes().front()->getLaneShape().length2D();
+        case SUMO_ATTR_PROB:
+            return myProbability;
         default:
             return getCommonAttributeDouble(key);
     }
@@ -600,6 +601,7 @@ GNERoute::setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList* u
         case SUMO_ATTR_COLOR:
         case SUMO_ATTR_REPEAT:
         case SUMO_ATTR_CYCLETIME:
+        case SUMO_ATTR_PROB:
             GNEChange_Attribute::changeAttribute(this, key, value, undoList);
             break;
         // special case due depart and arrival edge vehicles
@@ -661,6 +663,12 @@ GNERoute::isValid(SumoXMLAttr key, const std::string& value) {
         case SUMO_ATTR_CYCLETIME:
             if (canParse<SUMOTime>(value)) {
                 return (parse<SUMOTime>(value) >= 0);
+            } else {
+                return false;
+            }
+        case SUMO_ATTR_PROB:
+            if (canParse<double>(value)) {
+                return (parse<double>(value) >= 0);
             } else {
                 return false;
             }
@@ -840,6 +848,13 @@ GNERoute::setAttribute(SumoXMLAttr key, const std::string& value) {
                 myCycleTime = string2time(value);
             }
             break;
+        case SUMO_ATTR_PROB:
+            if (value.empty()) {
+                myProbability = myTagProperty->getDefaultDoubleValue(key);
+            } else {
+                myProbability = parse<double>(value);
+            }
+            break;
         default:
             setCommonAttribute(key, value);
             break;
@@ -860,7 +875,7 @@ GNERoute::checkCreatingVehicleOverRoute() const {
         return true;
     } else {
         // get current template AC
-        const auto templateAC = myNet->getViewNet()->getViewParent()->getVehicleFrame()->getVehicleTagSelector()->getCurrentTemplateAC();
+        const auto templateAC = myNet->getViewParent()->getVehicleFrame()->getVehicleTagSelector()->getCurrentTemplateAC();
         if (templateAC && templateAC->getTagProperty()->vehicleRoute()) {
             // we're creating a vehicle over a route, then hidde all embedded routes
             return false;

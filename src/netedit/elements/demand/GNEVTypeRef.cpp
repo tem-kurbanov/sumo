@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -30,12 +30,19 @@
 // ===========================================================================
 
 GNEVTypeRef::GNEVTypeRef(GNENet* net) :
-    GNEDemandElement("", net, "", GNE_TAG_VTYPEREF, GNEPathElement::Options::DEMAND_ELEMENT) {
+    GNEDemandElement(net, GNE_TAG_VTYPEREF) {
+}
+
+
+GNEVTypeRef::GNEVTypeRef(GNEDemandElement* distributionParent, GNEDemandElement* vTypeParent) :
+    GNEDemandElement(distributionParent, GNE_TAG_VTYPEREF) {
+    // set parents
+    setParents<GNEDemandElement*>({distributionParent, vTypeParent});
 }
 
 
 GNEVTypeRef::GNEVTypeRef(GNEDemandElement* distributionParent, GNEDemandElement* vTypeParent, const double probability) :
-    GNEDemandElement(distributionParent, GNE_TAG_VTYPEREF, GNEPathElement::Options::DEMAND_ELEMENT),
+    GNEDemandElement(distributionParent, GNE_TAG_VTYPEREF),
     myProbability(probability) {
     // set parents
     setParents<GNEDemandElement*>({distributionParent, vTypeParent});
@@ -77,7 +84,9 @@ void
 GNEVTypeRef::writeDemandElement(OutputDevice& device) const {
     device.openTag(SUMO_TAG_VTYPE);
     device.writeAttr(SUMO_ATTR_REFID, getAttribute(SUMO_ATTR_REFID));
-    device.writeAttr(SUMO_ATTR_PROB, myProbability);
+    if (myProbability != INVALID_DOUBLE) {
+        device.writeAttr(SUMO_ATTR_PROB, myProbability);
+    }
     // close tag
     device.closeTag();
 }
@@ -109,7 +118,7 @@ GNEVTypeRef::getVClass() const {
 
 const RGBColor&
 GNEVTypeRef::getColor() const {
-    return getParentDemandElements().back()->getColor();
+    return RGBColor::INVISIBLE;
 }
 
 
@@ -191,12 +200,16 @@ GNEVTypeRef::getAttribute(SumoXMLAttr key) const {
     switch (key) {
         case SUMO_ATTR_ID:
             return getMicrosimID();
-        case GNE_ATTR_VTYPE_DISTRIBUTION:
-            return getParentDemandElements().front()->getID();
         case SUMO_ATTR_REFID:
             return getParentDemandElements().back()->getID();
         case SUMO_ATTR_PROB:
-            return toString(myProbability);
+            if (myProbability == INVALID_DOUBLE) {
+                return getParentDemandElements().at(1)->getAttribute(key);
+            } else {
+                return toString(myProbability);
+            }
+        case GNE_ATTR_DEFAULT_PROBABILITY:
+            return (myProbability == INVALID_DOUBLE) ? TRUE_STR : FALSE_STR;
         default:
             return getCommonAttribute(key);
     }
@@ -207,7 +220,11 @@ double
 GNEVTypeRef::getAttributeDouble(SumoXMLAttr key) const {
     switch (key) {
         case SUMO_ATTR_PROB:
-            return myProbability;
+            if (myProbability == INVALID_DOUBLE) {
+                return getParentDemandElements().at(1)->getAttributeDouble(key);
+            } else {
+                return myProbability;
+            }
         default:
             return getCommonAttributeDouble(key);
     }
@@ -223,7 +240,6 @@ GNEVTypeRef::getAttributePosition(SumoXMLAttr key) const {
 bool
 GNEVTypeRef::isAttributeEnabled(SumoXMLAttr key) const {
     switch (key) {
-        case GNE_ATTR_VTYPE_DISTRIBUTION:
         case SUMO_ATTR_REFID:
             return false;
         default:
@@ -263,6 +279,17 @@ GNEVTypeRef::isValid(SumoXMLAttr key, const std::string& value) {
 }
 
 
+bool
+GNEVTypeRef::isAttributeComputed(SumoXMLAttr key) const {
+    switch (key) {
+        case SUMO_ATTR_PROB:
+            return myProbability == INVALID_DOUBLE;
+        default:
+            return false;
+    }
+}
+
+
 std::string
 GNEVTypeRef::getPopUpID() const {
     return getTagStr();
@@ -271,7 +298,7 @@ GNEVTypeRef::getPopUpID() const {
 
 std::string
 GNEVTypeRef::getHierarchyName() const {
-    return TLF("%: % -> %", myTagProperty->getTagStr(), getAttribute(GNE_ATTR_VTYPE_DISTRIBUTION), getAttribute(SUMO_ATTR_REFID));
+    return TLF("%: %, %", myTagProperty->getTagStr(), getParentDemandElements().back()->getID(), getAttribute(SUMO_ATTR_PROB));
 }
 
 // ===========================================================================
@@ -283,7 +310,7 @@ GNEVTypeRef::setAttribute(SumoXMLAttr key, const std::string& value) {
     switch (key) {
         case SUMO_ATTR_PROB:
             if (value.empty()) {
-                myProbability = myTagProperty->getDefaultDoubleValue(key);
+                myProbability = INVALID_DOUBLE;
             } else {
                 myProbability = parse<double>(value);
             }

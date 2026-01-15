@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -44,7 +44,7 @@ public:
     /**@brief Constructor
      * @param[in] id The name of the stopping place
      * @param[in] net net in which this polygon is placed
-     * @param[in] filename file in which this element is stored
+     * @param[in] fileBucket file in which this element is stored
      * @param[in] tag Type of xml tag that define the StoppingPlace (SUMO_TAG_BUS_STOP, SUMO_TAG_CHARGING_STATION, etc...)
      * @param[in] lane Lane of this StoppingPlace belongs
      * @param[in] startPos Start position of the StoppingPlace
@@ -55,7 +55,7 @@ public:
      * @param[in] angle stoppingPlace angle
      * @param[in] parameters generic parameters
      */
-    GNEStoppingPlace(const std::string& id, GNENet* net, const std::string& filename, SumoXMLTag tag, GNELane* lane,
+    GNEStoppingPlace(const std::string& id, GNENet* net, FileBucket* fileBucket, SumoXMLTag tag, GNELane* lane,
                      const double startPos, const double endPos, const std::string& name, bool friendlyPosition,
                      const RGBColor& color, const double angle, const Parameterised::Map& parameters);
 
@@ -80,13 +80,13 @@ public:
     /// @{
 
     /// @brief check if current additional is valid to be written into XML (must be reimplemented in all detector children)
-    bool isAdditionalValid() const;
+    bool isAdditionalValid() const override;
 
     /// @brief return a string with the current additional problem (must be reimplemented in all detector children)
-    std::string getAdditionalProblem() const;
+    std::string getAdditionalProblem() const override;
 
     /// @brief fix additional problem (must be reimplemented in all detector children)
-    void fixAdditionalProblem();
+    void fixAdditionalProblem() override;
 
     /// @}
 
@@ -102,13 +102,13 @@ public:
     /// @{
 
     /// @brief Returns position of additional in view
-    Position getPositionInView() const;
+    Position getPositionInView() const override;
 
     /// @brief update centering boundary (implies change in RTREE)
-    void updateCenteringBoundary(const bool updateGrid);
+    void updateCenteringBoundary(const bool updateGrid) override;
 
     /// @brief split geometry
-    void splitEdgeGeometry(const double splitPosition, const GNENetworkElement* originalElement, const GNENetworkElement* newElement, GNEUndoList* undoList);
+    void splitEdgeGeometry(const double splitPosition, const GNENetworkElement* originalElement, const GNENetworkElement* newElement, GNEUndoList* undoList) override;
 
     /// @}
 
@@ -116,7 +116,7 @@ public:
     /// @{
     /// @brief Returns the name of the parent object
     /// @return This object's parent id
-    std::string getParentName() const;
+    std::string getParentName() const override;
 
     /// @}
 
@@ -138,7 +138,7 @@ public:
     /* @brief method for check if the value for certain attribute is set
      * @param[in] key The attribute key
      */
-    bool isAttributeEnabled(SumoXMLAttr key) const;
+    bool isAttributeEnabled(SumoXMLAttr key) const override;
 
     /// @brief get PopPup ID (Used in AC Hierarchy)
     std::string getPopUpID() const override;

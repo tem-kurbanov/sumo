@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2006-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2006-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -50,7 +50,7 @@ public:
         SAVE_DONTSAVE_CANCEL,   // save/don't save/cancel buttons
         RUN_CANCEL_RESET,       // run/cancel/reset buttons (used in tools dialogs)
         RUN_ADVANCED_CANCEL,    // run/advanced/cancel buttons (used in tools dialogs)
-        RERUN_BACK_CLOSE,       // rerun-abort/back buttons (used in run dialogs)
+        RERUN_BACK_OK,          // rerun-abort/back buttons (used in run dialogs)
         OK_COPY_REPORT          // ok, copy trace and report to github
     };
 
@@ -76,14 +76,24 @@ public:
     };
 
     /// @brief basic constructor
-    GNEDialog(GNEApplicationWindow* applicationWindow, const std::string& name,
-              GUIIcon titleIcon, DialogType type, Buttons buttons, OpenType openType,
-              ResizeMode resizeMode);
+    GNEDialog(GNEApplicationWindow* applicationWindow,
+              const std::string& name, GUIIcon titleIcon, DialogType type, Buttons buttons,
+              OpenType openType, ResizeMode resizeMode);
+
+    /// @brief basic constructor with dialog parent
+    GNEDialog(GNEApplicationWindow* applicationWindow, GNEDialog* parentDialog,
+              const std::string& name, GUIIcon titleIcon, DialogType type, Buttons buttons,
+              OpenType openType, ResizeMode resizeMode);
 
     /// @brief constructor with layout explicit
-    GNEDialog(GNEApplicationWindow* applicationWindow, const std::string& name,
-              GUIIcon titleIcon, DialogType type, Buttons buttons, OpenType openType,
-              ResizeMode resizeMode, const int width, const int height);
+    GNEDialog(GNEApplicationWindow* applicationWindow,
+              const std::string& name, GUIIcon titleIcon, DialogType type, Buttons buttons,
+              OpenType openType, ResizeMode resizeMode, const int width, const int height);
+
+    /// @brief constructor with layout explicit and dialog parent
+    GNEDialog(GNEApplicationWindow* applicationWindow, GNEDialog* parentDialog,
+              const std::string& name, GUIIcon titleIcon, DialogType type, Buttons buttons,
+              OpenType openType, ResizeMode resizeMode, const int width, const int height);
 
     /// @brief get result to indicate if this dialog was closed accepting or rejecting changes
     Result getResult() const;
@@ -141,6 +151,9 @@ protected:
 
     /// @brief pointer to the main window
     GNEApplicationWindow* myApplicationWindow = nullptr;
+
+    /// @brief parent dialog used for restoring focus after closing dialog
+    GNEDialog* myParentDialog = nullptr;
 
     /// @brief content frame
     FXVerticalFrame* myContentFrame = nullptr;

@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -222,6 +222,8 @@ FXDEFMAP(GUIApplicationWindow) GUIApplicationWindowMap[] = {
     FXMAPFUNC(SEL_UPDATE,   MID_LANGUAGE_HU,    GUIApplicationWindow::onUpdChangeLanguage),
     FXMAPFUNC(SEL_COMMAND,  MID_LANGUAGE_JA,    GUIApplicationWindow::onCmdChangeLanguage),
     FXMAPFUNC(SEL_UPDATE,   MID_LANGUAGE_JA,    GUIApplicationWindow::onUpdChangeLanguage),
+    FXMAPFUNC(SEL_COMMAND,  MID_LANGUAGE_KO,    GUIApplicationWindow::onCmdChangeLanguage),
+    FXMAPFUNC(SEL_UPDATE,   MID_LANGUAGE_KO,    GUIApplicationWindow::onUpdChangeLanguage),
     // keys
     FXMAPFUNC(SEL_KEYPRESS,              0,     GUIApplicationWindow::onKeyPress),
     FXMAPFUNC(SEL_KEYRELEASE,            0,     GUIApplicationWindow::onKeyRelease),
@@ -540,8 +542,8 @@ GUIApplicationWindow::fillMenuBar() {
                       TL("Open in netedit"), "Ctrl+T", TL("Opens current simulation in NETEDIT."),
                       GUIIconSubSys::getIcon(GUIIcon::NETEDIT_MINI), this, MID_HOTKEY_CTRL_T_OPENNETEDIT_OPENSUMO);
     myOpenNetInNetedit = GUIDesigns::buildFXMenuCommandShortcut(myEditMenu,
-                      TL("Open network in netedit"), "Ctrl+Shift+T", TL("Opens current network in NETEDIT."),
-                      GUIIconSubSys::getIcon(GUIIcon::NETEDIT_MINI), this, MID_HOTKEY_CTRL_SHIFT_T_OPEN_NET);
+                         TL("Open network in netedit"), "Ctrl+Shift+T", TL("Opens current network in NETEDIT."),
+                         GUIIconSubSys::getIcon(GUIIcon::NETEDIT_MINI), this, MID_HOTKEY_CTRL_SHIFT_T_OPEN_NET);
     // build settings menu
     mySettingsMenu = new FXMenuPane(this);
     GUIDesigns::buildFXMenuTitle(myMenuBar, TL("&Settings"), nullptr, mySettingsMenu);
@@ -1847,13 +1849,11 @@ GUIApplicationWindow::handleEvent_SimulationLoaded(GUIEvent* e) {
     GUIEvent_SimulationLoaded* ec = static_cast<GUIEvent_SimulationLoaded*>(e);
     // check whether the loading was successful
     if (ec->myNet == nullptr) {
-        if (ec->myFile.size() > 0) {
-            // report failure
-            setStatusBarText(TLF("Loading of '%' failed!", ec->myFile));
-            if (GUIGlobals::gQuitOnEnd) {
-                closeAllWindows();
-                getApp()->exit(1);
-            }
+        // report failure
+        setStatusBarText(TLF("Loading of '%' failed!", ec->myFile));
+        if (GUIGlobals::gQuitOnEnd) {
+            closeAllWindows();
+            getApp()->exit(1);
         }
     } else {
         // initialise simulation thread
@@ -2006,7 +2006,6 @@ GUIApplicationWindow::handleEvent_SimulationLoaded(GUIEvent* e) {
                 myDemandScaleSpinner->setValue(OptionsCont::getOptions().getFloat("scale"));
             }
             myRunThread->getNet().getVehicleControl().setScale(myDemandScaleSpinner->getValue());
-            MSRoutingEngine::initGUIThreadRNG();
         }
     }
     getApp()->endWaitCursor();
@@ -2213,9 +2212,7 @@ GUIApplicationWindow::loadConfigOrNet(const std::string& file) {
         closeAllWindows();
         gSchemeStorage.saveViewport(0, 0, -1, 0); // recenter view
         myLoadThread->loadConfigOrNet(file);
-        if (file.size() > 0) {
-            setStatusBarText(TLF("Loading '%'.", file));
-        }
+        setStatusBarText(TLF("Loading '%'.", file));
         update();
     }
 }

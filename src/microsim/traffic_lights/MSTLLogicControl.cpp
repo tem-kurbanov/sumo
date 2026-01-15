@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -826,6 +826,11 @@ MSTLLogicControl::getPhaseDef(const std::string& tlid) const {
 void
 MSTLLogicControl::switchOffAll() {
     for (const auto& logic : myLogics) {
+        if (logic.second->getActive()->getLogicType() == TrafficLightType::RAIL_SIGNAL) {
+            // there is no sensible fall-back behavior when switching of rail
+            // signals so they should ignore tls.all-off
+            continue;
+        }
         logic.second->addLogic("off", new MSOffTrafficLightLogic(*this, logic.first), true, true);
     }
 }

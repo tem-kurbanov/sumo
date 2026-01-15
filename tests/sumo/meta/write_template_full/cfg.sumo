@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2025-10-09T13:47:59.907343+01:00 by Eclipse SUMO sumo v1_24_0+1295-8333438020a
+<!-- generated on 2025-12-08T13:11:09.419163+01:00 by Eclipse SUMO sumo v1_25_0+0257-b3edb448106
 -->
 
 <sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
@@ -30,6 +30,7 @@
         <write-license value="false" type="BOOL" help="Include license info into every output file"/>
         <write-metadata value="false" type="BOOL" help="Write parsable metadata (configuration etc.) instead of comments"/>
         <output-prefix value="" type="STR" help="Prefix which is applied to all output files. The special string &apos;TIME&apos; is replaced by the current time."/>
+        <output-suffix value="" type="STR" help="Suffix which is applied to all output files. The special string &apos;TIME&apos; is replaced by the current time."/>
         <precision value="2" type="INT" help="Defines the number of digits after the comma for floating point output"/>
         <precision.geo value="6" type="INT" help="Defines the number of digits after the comma for lon,lat output"/>
         <output.compression value="" type="STR" help="Defines the standard compression algorithm (currently only for parquet output)"/>
@@ -222,12 +223,14 @@
         <mapmatch.junctions value="false" type="BOOL" help="Match positions to junctions instead of edges"/>
         <mapmatch.taz value="false" type="BOOL" help="Match positions to taz instead of edges"/>
         <weights.turnaround-penalty value="5" type="FLOAT" help="Apply the given time penalty when computing routing costs for turnaround internal lanes"/>
+        <weights.reversal-penalty value="60" type="FLOAT" help="Apply the given time penalty when computing routing costs for train reversal. Negative values disable reversal"/>
         <persontrip.walk-opposite-factor value="1" type="FLOAT" help="Use FLOAT as a factor on walking speed against vehicle traffic direction"/>
     </processing>
 
     <routing>
         <routing-algorithm value="dijkstra" type="STR" help="Select among routing algorithms [&apos;dijkstra&apos;, &apos;astar&apos;, &apos;CH&apos;, &apos;CHWrapper&apos;]"/>
         <weights.random-factor value="1" type="FLOAT" help="Edge weights for routing are dynamically disturbed by a random factor drawn uniformly from [1,FLOAT)"/>
+        <weights.random-factor.dynamic value="false" type="BOOL" help="When using option --weights.random-factor, vary the randomness over time"/>
         <weights.minor-penalty value="1.5" type="FLOAT" help="Apply the given time penalty when computing minimum routing costs for minor-link internal lanes"/>
         <weights.tls-penalty value="0" type="FLOAT" help="Apply scaled travel time penalties based on green split when computing minimum routing costs for internal lanes at traffic lights"/>
         <weights.priority-factor value="0" type="FLOAT" help="Consider edge priorities in addition to travel times, weighted by factor"/>
@@ -534,7 +537,7 @@
         <start value="false" synonymes="S" type="BOOL" help="Start the simulation after loading"/>
         <delay value="0" synonymes="d" type="FLOAT" help="Use FLOAT in ms as delay between simulation steps"/>
         <breakpoints value="" synonymes="B" type="STR[]" help="Use TIME[] as times when the simulation should halt"/>
-        <edgedata-files value="" synonymes="data-files" type="FILE" help="Load edge/lane weights for visualization from FILE"/>
+        <edgedata-files value="" synonymes="data-files m" type="FILE" help="Load edge/lane weights for visualization from FILE"/>
         <alternative-net-file value="" synonymes="N" type="FILE" help="Load a secondary road network for abstract visualization from FILE"/>
         <selection-file value="" type="FILE" help="Load pre-selected elements from FILE"/>
         <demo value="false" synonymes="D" type="BOOL" help="Restart the simulation after ending (demo mode)"/>
@@ -543,7 +546,6 @@
         <window-size value="" type="STR[]" help="Create initial window with the given x,y size"/>
         <window-pos value="" type="STR[]" help="Create initial window at the given x,y position"/>
         <tracker-interval value="1" type="TIME" help="The aggregation period for value tracker windows"/>
-        <osg-view value="false" type="BOOL" help="Start with an OpenSceneGraph view instead of the regular 2D view"/>
         <gui-testing value="false" type="BOOL" help="Enable overlay for screen recognition"/>
         <gui-testing-debug value="false" type="BOOL" help="Enable output messages during GUI-Testing"/>
         <gui-testing.setting-output value="" type="FILE" help="Save gui settings in the given settings output file"/>

@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -40,8 +40,8 @@ class GNERunDialog : public GNEDialog {
 
 public:
     /// @brief Constructor
-    GNERunDialog(GNEApplicationWindow* applicationWindow,
-                 const std::string& name, GUIIcon titleIcon);
+    GNERunDialog(GNEApplicationWindow* applicationWindow, const std::string& name,
+                 GUIIcon titleIcon, const bool closeIfSucess);
 
     /// @brief destructor
     ~GNERunDialog();
@@ -82,6 +82,9 @@ protected:
     /// @brief FOX needs this
     FOX_CONSTRUCTOR(GNERunDialog);
 
+    /// @brief flag to close dialog automatically if sucess
+    const bool myCloseIfSucess = false;
+
     /// @brief text
     FXText* myText = nullptr;
 
@@ -90,6 +93,9 @@ protected:
 
     /// @brief io-event with the runner thread
     FXEX::MFXThreadEvent myThreadEvent;
+
+    /// @brief flag to check if there is a warning
+    bool myWarning = false;
 
     /// @brief flag to check if there is an error
     bool myError = false;

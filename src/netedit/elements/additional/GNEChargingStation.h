@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -13,6 +13,7 @@
 /****************************************************************************/
 /// @file    GNEChargingStation.h
 /// @author  Pablo Alvarez Lopez
+/// @author  Mirko Barthauer
 /// @date    Nov 2015
 ///
 // A class for visualizing chargingStation geometry (adapted from GUILaneWrapper)
@@ -35,7 +36,7 @@ public:
     /**@brief Constructor of charging station
      * @param[in] id charging station ID
      * @param[in] net pointer to GNENet of this additional element belongs
-     * @param[in] filename file in which this element is stored
+     * @param[in] fileBucket file in which this element is stored
      * @param[in] lane Lane of this StoppingPlace belongs
      * @param[in] startPos Start position of the StoppingPlace
      * @param[in] endPos End position of the StoppingPlace
@@ -50,9 +51,9 @@ public:
      * @param[in] friendlyPos enable or disable friendly position
      * @param[in] parameters generic parameters
      */
-    GNEChargingStation(const std::string& id, GNENet* net, const std::string& filename, GNELane* lane,
+    GNEChargingStation(const std::string& id, GNENet* net, FileBucket* fileBucket, GNELane* lane,
                        const double startPos, const double endPos, const std::string& name, const double chargingPower,
-                       const double efficiency, const bool chargeInTransit, const SUMOTime chargeDelay,
+                       const double totalPower, const double efficiency, const bool chargeInTransit, const SUMOTime chargeDelay,
                        const std::string& chargeType, const SUMOTime waitingTime, const std::string& parkingAreaID,
                        const bool friendlyPosition, const Parameterised::Map& parameters);
 
@@ -62,7 +63,7 @@ public:
     /**@brief write additional element into a xml file
      * @param[in] device device in which write parameters of additional element
      */
-    void writeAdditional(OutputDevice& device) const;
+    void writeAdditional(OutputDevice& device) const override;
 
     /// @name Functions related with geometry of element
     /// @{
@@ -79,7 +80,7 @@ public:
      * @param[in] s The settings for the current view (may influence drawing)
      * @see GUIGlObject::drawGL
      */
-    void drawGL(const GUIVisualizationSettings& s) const;
+    void drawGL(const GUIVisualizationSettings& s) const override;
 
     /// @}
 
@@ -115,8 +116,11 @@ public:
     /// @}
 
 protected:
-    /// @brief Charging power pro timestep
+    /// @brief Charging power pro timestep and vehicle
     double myChargingPower = 0;
+
+    /// @brief Charging power pro timestep across all charging vehicles
+    double myTotalPower = 0;
 
     /// @brief efficiency of the charge
     double myEfficiency = 0;

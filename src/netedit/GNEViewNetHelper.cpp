@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -105,16 +105,16 @@ GNEViewNetHelper::LockManager::isObjectLocked(GUIGlObjectType objectType, const 
     } else if ((objectType >= GLO_WIRE) && (objectType <= GLO_TRACTIONSUBSTATION)) {
         // wires
         return myLockedElements.at(GLO_WIRE).lock;
-    } else if ((objectType == GLO_ROUTE) || (objectType == GLO_ROUTE_EMBEDDED)) {
+    } else if ((objectType >= GLO_ROUTE) && (objectType <= GLO_ROUTE_DISTRIBUTION)) {
         // routes
         return myLockedElements.at(GLO_ROUTE).lock;
     } else if ((objectType >= GLO_VEHICLE) && (objectType <= GLO_ROUTEFLOW)) {
         // vehicles
         return myLockedElements.at(GLO_VEHICLE).lock;
-    } else if ((objectType == GLO_PERSON) || (objectType == GLO_PERSONFLOW)) {
+    } else if ((objectType >= GLO_PERSON) && (objectType <= GLO_PERSONFLOW)) {
         // persons
         return myLockedElements.at(GLO_PERSON).lock;
-    } else if ((objectType == GLO_CONTAINER) || (objectType == GLO_CONTAINERFLOW)) {
+    } else if ((objectType >= GLO_CONTAINER) && (objectType <= GLO_CONTAINERFLOW)) {
         // containers
         return myLockedElements.at(GLO_CONTAINER).lock;
     } else if ((objectType >= GLO_STOP) && (objectType <= GLO_STOP_PLAN)) {
@@ -332,6 +332,22 @@ GNEViewNetHelper::InspectedElements::isInspectingMultipleElements() const {
 GNEViewNetHelper::MarkFrontElements::MarkFrontElements() {}
 
 
+const std::unordered_set<GNEAttributeCarrier*>&
+GNEViewNetHelper::MarkFrontElements::getACs() const {
+    return myMarkedACs;
+}
+
+
+void
+GNEViewNetHelper::MarkFrontElements::unmarkAll() {
+    // make a copy because container is modified in every iteration
+    const auto copy = myMarkedACs;
+    for (auto& AC : copy) {
+        AC->unmarkForDrawingFront();
+    }
+}
+
+
 void
 GNEViewNetHelper::MarkFrontElements::markAC(GNEAttributeCarrier* AC) {
     myMarkedACs.insert(AC);
@@ -346,22 +362,6 @@ GNEViewNetHelper::MarkFrontElements::unmarkAC(GNEAttributeCarrier* AC) {
             myMarkedACs.erase(it);
         }
     }
-}
-
-
-void
-GNEViewNetHelper::MarkFrontElements::unmarkAll() {
-    // make a copy because container is modified in every iteration
-    const auto copy = myMarkedACs;
-    for (auto& AC : copy) {
-        AC->unmarkForDrawingFront();
-    }
-}
-
-
-const std::unordered_set<GNEAttributeCarrier*>&
-GNEViewNetHelper::MarkFrontElements::getACs() const {
-    return myMarkedACs;
 }
 
 // ---------------------------------------------------------------------------
@@ -2067,30 +2067,36 @@ GNEViewNetHelper::SelectingArea::processBoundarySelection(const Boundary& bounda
     std::vector<GNEAttributeCarrier*> ACsFiltered;
     ACsFiltered.reserve(myViewNet->getViewObjectsSelector().getAttributeCarriers().size());
     for (const auto& AC : myViewNet->getViewObjectsSelector().getAttributeCarriers()) {
-        // isGLObjectLockedcheck also if we're in their correspoindient supermode
-        if (!AC->getGUIGlObject()->isGLObjectLocked()) {
-            const auto tagProperty = AC->getTagProperty();
-            if (tagProperty->isNetworkElement() || tagProperty->isAdditionalElement()) {
-                // filter edges and lanes
-                if (((tagProperty->getTag() == SUMO_TAG_EDGE) && !selEdges) ||
-                        ((tagProperty->getTag() == SUMO_TAG_LANE) && selEdges)) {
-                    continue;
-                } else {
-                    ACsFiltered.push_back(AC);
-                }
-            } else if (tagProperty->isDemandElement()) {
-                ACsFiltered.push_back(AC);
-            } else if (tagProperty->isGenericData()) {
+        const auto tagProperty = AC->getTagProperty();
+        if (tagProperty->isNetworkElement() || tagProperty->isAdditionalElement()) {
+            // filter edges and lanes
+            if (((tagProperty->getTag() == SUMO_TAG_EDGE) && !selEdges) ||
+                    ((tagProperty->getTag() == SUMO_TAG_LANE) && selEdges)) {
+                continue;
+            } else {
                 ACsFiltered.push_back(AC);
             }
+        } else if (tagProperty->isDemandElement()) {
+            ACsFiltered.push_back(AC);
+        } else if (tagProperty->isGenericData()) {
+            ACsFiltered.push_back(AC);
+        }
+    }
+    // filter ACsInBoundary depending if is locked
+    std::vector<GNEAttributeCarrier*> ACsFilteredUnlocked;
+    ACsFilteredUnlocked.reserve(ACsFiltered.size());
+    for (const auto& AC : ACsFiltered) {
+        // isGLObjectLockedcheck also if we're in their correspoindient supermode
+        if (!AC->getGUIGlObject()->isGLObjectLocked()) {
+            ACsFilteredUnlocked.push_back(AC);
         }
     }
     // declare two sets of attribute carriers, one for select and another for unselect
     std::vector<GNEAttributeCarrier*> ACToSelect;
     std::vector<GNEAttributeCarrier*> ACToUnselect;
     // reserve memory (we assume that in the worst case we're going to insert all elements of ACsInBoundaryFiltered
-    ACToSelect.reserve(ACsFiltered.size());
-    ACToUnselect.reserve(ACsFiltered.size());
+    ACToSelect.reserve(ACsFilteredUnlocked.size());
+    ACToUnselect.reserve(ACsFilteredUnlocked.size());
     // in restrict AND replace mode all current selected attribute carriers will be unselected
     const auto modificationMode = myViewNet->myViewParent->getSelectorFrame()->getModificationModeModul()->getModificationMode();
     if ((modificationMode == GNESelectorFrame::ModificationMode::Operation::RESTRICT) || (modificationMode == GNESelectorFrame::ModificationMode::Operation::REPLACE)) {
@@ -2102,7 +2108,7 @@ GNEViewNetHelper::SelectingArea::processBoundarySelection(const Boundary& bounda
         }
     }
     // iterate over AttributeCarriers obtained of boundary an place it in ACToSelect or ACToUnselect
-    for (const auto& AC : ACsFiltered) {
+    for (const auto& AC : ACsFilteredUnlocked) {
         switch (myViewNet->myViewParent->getSelectorFrame()->getModificationModeModul()->getModificationMode()) {
             case GNESelectorFrame::ModificationMode::Operation::SUB:
                 ACToUnselect.push_back(AC);

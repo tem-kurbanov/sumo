@@ -1,6 +1,6 @@
 /****************************************************************************/
 // Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
-// Copyright (C) 2001-2025 German Aerospace Center (DLR) and others.
+// Copyright (C) 2001-2026 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
 // https://www.eclipse.org/legal/epl-2.0/
@@ -140,10 +140,11 @@ GNEPythonToolDialog::onCmdShowToolTipsMenu(FXObject*, FXSelector, void*) {
 long
 GNEPythonToolDialog::onCmdSave(FXObject*, FXSelector, void*) {
     // open save dialog
-    const auto optionsFileDialog = GNEFileDialog(myApplicationWindow, TL("options file"),
-                                   SUMOXMLDefinitions::XMLFileExtensions.getStrings(),
-                                   GNEFileDialog::OpenMode::SAVE,
-                                   GNEFileDialog::ConfigType::NETEDIT);
+    const GNEFileDialog optionsFileDialog(myApplicationWindow, this,
+                                          TL("options file"),
+                                          SUMOXMLDefinitions::XMLFileExtensions.getStrings(),
+                                          GNEFileDialog::OpenMode::SAVE,
+                                          GNEFileDialog::ConfigType::NETEDIT);
     // check file
     if (optionsFileDialog.getResult() == GNEDialog::Result::ACCEPT) {
         myPythonTool->saveConfiguration(optionsFileDialog.getFilename());
@@ -155,10 +156,11 @@ GNEPythonToolDialog::onCmdSave(FXObject*, FXSelector, void*) {
 long
 GNEPythonToolDialog::onCmdLoad(FXObject*, FXSelector, void*) {
     // open file dialog
-    const auto optionsFileDialog = GNEFileDialog(myApplicationWindow, TL("options file"),
-                                   SUMOXMLDefinitions::XMLFileExtensions.getStrings(),
-                                   GNEFileDialog::OpenMode::LOAD_SINGLE,
-                                   GNEFileDialog::ConfigType::NETEDIT);
+    const GNEFileDialog optionsFileDialog(myApplicationWindow, this,
+                                          TL("options file"),
+                                          SUMOXMLDefinitions::XMLFileExtensions.getStrings(),
+                                          GNEFileDialog::OpenMode::LOAD_SINGLE,
+                                          GNEFileDialog::ConfigType::NETEDIT);
     // check file
     if ((optionsFileDialog.getResult() == GNEDialog::Result::ACCEPT) && myPythonTool->loadConfiguration(optionsFileDialog.getFilename())) {
         // rebuild arguments
@@ -296,6 +298,12 @@ GNEPythonToolDialog::buildArguments(bool sortByName, bool groupedByCategories) {
                 myArguments.push_back(new GNEPythonToolDialogElements::StringArgument(this, myPythonTool, getApplicationWindow(), argumentFrame, option.first, option.second));
             }
             numInsertedArguments++;
+        }
+    }
+    // check if create arguments
+    if (id() > 0) {
+        for (auto& argument : myArguments) {
+            argument->create();
         }
     }
     // adjust parameter column (call always after create elements)
